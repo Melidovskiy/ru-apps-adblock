@@ -1,0 +1,71 @@
+name: Проблема с модулем
+description: Реклама не убирается, убралось лишнее или приложение перестало работать
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Чтобы разобраться, нужны приложение, его версия и строки журнала Shadowrocket с пометкой `[RU-AdBlock]`.
+        **Не прикладывайте журнал целиком:** в нём есть адреса запросов, токены входа и номера телефонов.
+  - type: dropdown
+    id: app
+    attributes:
+      label: Приложение
+      options:
+        - Ozon
+        - Wildberries
+        - Яндекс Маркет
+        - Яндекс Go
+        - Avito
+        - СДЭК
+        - Почта России
+        - AliExpress
+        - DDX Fitness
+        - Другое
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Что случилось
+      options:
+        - Реклама или блок не убирается
+        - Убралось лишнее
+        - Приложение или раздел перестали работать
+        - Другое
+    validations:
+      required: true
+  - type: input
+    id: app_version
+    attributes:
+      label: Версия приложения
+      placeholder: например, 18.42.0
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Версии iOS и Shadowrocket
+      placeholder: например, iOS 26.1, Shadowrocket 2.2.70
+  - type: textarea
+    id: details
+    attributes:
+      label: Где и что именно
+      description: Экран приложения и что на нём не так. Приложите скриншот и обведите блок.
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Строки журнала [RU-AdBlock]
+      description: Shadowrocket → журнал, откройте нужный экран приложения и скопируйте только строки с [RU-AdBlock].
+      render: text
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Проверено
+      options:
+        - label: Модуль включён, расшифровка HTTPS включена, сертификату доверяю
+          required: true
+        - label: Приложение полностью перезапущено
+          required: true
