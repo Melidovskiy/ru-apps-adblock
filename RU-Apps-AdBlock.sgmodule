@@ -1,0 +1,105 @@
+#!name=RU Apps AdBlock v3.20
+#!desc=Ozon / WB / Яндекс Маркет / Яндекс Go / Avito / СДЭК / Почта России / AliExpress / DDX Fitness. v3.20: DDX Fitness — скрипт сам повторяет запросы DDX, которые обрывались при расшифровке (тренеры в «Календаре», видео, абонементы); Яндекс Go — рекламный баннер на экране доставки. v3.19: DDX Fitness — запросы без сжатия ответов (сжатые при расшифровке обрывались: сторис, тренеры, видео, абонементы), сторис на главной убраны. v3.18: AliExpress — полка «Звёздные купоны» / бренды на главной, широкие карточки в ленте «Для вас»; DDX Fitness — баннеры правилом модуля; Ozon Банк — api.finance.ozon.ru больше не расшифровывается. v3.17: DDX Fitness — карусель баннеров на главной; v3.16: WB Кошелёк — убрана карусель «Накопительный счёт» и др. на главной Кошелька; Ozon Банк — баннеры на экране банка. v3.14: Ozon Банк — убран баннер «Товары за 1 ₽ за покупки по вашей карте» наверху вкладки ₽. Убраны рекомендации — Ozon (профиль, избранное, корзина, «Товары за 1 ₽», «Лента обзоров»), Маркет («Достойны сердечка», «Может пригодиться»), Avito («Похожие объявления»), AliExpress (профиль и корзина); WB — «Selected for you» и баннерные блоки. Вырезает рекламные блоки из ответов API (по маркировке erid / «Реклама» / «Ad») и блокирует рекламные и трекинговые хосты. Скрипт ru-adblock.js v3.20 загружается из репозитория github.com/Melidovskiy/ru-apps-adblock; нужна HTTPS Decryption.
+
+[Rule]
+# ───── Запрет QUIC для расшифровываемых хостов: иначе HTTP/3 идёт мимо MITM и скрипта ─────
+AND,((DOMAIN,api.ozon.ru),(PROTOCOL,UDP)),REJECT-NO-DROP
+AND,((DOMAIN,mapi.market.yandex.net),(PROTOCOL,UDP)),REJECT-NO-DROP
+AND,((DOMAIN,tc.mobile.yandex.net),(PROTOCOL,UDP)),REJECT-NO-DROP
+AND,((DOMAIN-SUFFIX,wildberries.ru),(PROTOCOL,UDP)),REJECT-NO-DROP
+AND,((DOMAIN-SUFFIX,wb.ru),(PROTOCOL,UDP)),REJECT-NO-DROP
+AND,((DOMAIN-SUFFIX,wbbasket.ru),(PROTOCOL,UDP)),REJECT-NO-DROP
+AND,((DOMAIN,app.avito.ru),(PROTOCOL,UDP)),REJECT-NO-DROP
+AND,((DOMAIN,mobileapp.russianpost.ru),(PROTOCOL,UDP)),REJECT-NO-DROP
+AND,((DOMAIN,my.cdek.ru),(PROTOCOL,UDP)),REJECT-NO-DROP
+AND,((DOMAIN-SUFFIX,aliexpress.ru),(PROTOCOL,UDP)),REJECT-NO-DROP
+AND,((DOMAIN,mobileapi.ddxfitness.ru),(PROTOCOL,UDP)),REJECT-NO-DROP
+
+# ─────────────────────────── OZON ───────────────────────────
+DOMAIN-SUFFIX,weborama-tech.ru,REJECT-DROP
+DOMAIN-SUFFIX,appsflyersdk.com,REJECT-DROP
+DOMAIN,p.ozon.ru,REJECT
+# Ozon Банк: карусель на главной банка («Верните себе до 100% расходов…») приходит с api.finance.ozon.ru. У серверов банка
+# сертификат российского УЦ, Shadowrocket при расшифровке не может его проверить (в логе CERTIFICATE_VERIFY_FAILED, запросы
+# банка падают), поэтому хост не расшифровывается и карусель модулем не убрать. Баннер вкладки банка в самом Ozon
+# (skeeter.fintabBannerPriority, api.ozon.ru) по-прежнему вырезается скриптом.
+
+# ──────────────────────── WILDBERRIES ───────────────────────
+DOMAIN,a.wb.ru,REJECT-DROP
+DOMAIN,acollector.wb.ru,REJECT-DROP
+DOMAIN,journal-bt.wildberries.ru,REJECT-DROP
+DOMAIN-SUFFIX,app-ads-services.com,REJECT-DROP
+# WB Кошелёк: карусель на главной Кошелька («Накопительный счёт» и др.) вырезается скриптом из ответа
+# finance.wb.ru/api/offers-api/…/product/offers (см. [Script])
+
+# ─────────────────────────── ЯНДЕКС ─────────────────────────
+DOMAIN,media-adv.market.yandex.ru,REJECT
+DOMAIN,adfstat.yandex.ru,REJECT
+DOMAIN-SUFFIX,appmetrica.yandex.net,REJECT-DROP
+DOMAIN-SUFFIX,appmetrica.yango.com,REJECT-DROP
+DOMAIN,analytics.adjust.com,REJECT-DROP
+DOMAIN,analytics.adjust.io,REJECT-DROP
+# Яндекс Go, экран доставки: рекламный баннер (элемент urban-ads) вырезается скриптом из ответа tc.mobile.yandex.net
+# (…/cargo-c2c/…/delivery/state), ответ рекламной сети tc.mobile.yandex.net/4.0/urbanads/… очищается (см. [Script]).
+# Рекламная сеть Яндекса в чужих приложениях (в логе — Почта России): mobile.yandexadexchange.net
+DOMAIN-SUFFIX,yandexadexchange.net,REJECT
+
+# ─────────────────────────── AVITO ──────────────────────────
+DOMAIN,stats.avito.ru,REJECT-DROP
+DOMAIN-SUFFIX,tracker-api.vk-analytics.ru,REJECT-DROP
+
+# ─────────────────────────── СДЭК ───────────────────────────
+# Собственная рекламная платформа СДЭК: ssp. / rtb. / sync. / containers. / ui-api.ad-cdek.ru (все пять в логе)
+DOMAIN-SUFFIX,ad-cdek.ru,REJECT
+
+# ───────────────────────── ALIEXPRESS ────────────────────────
+# Реклама и блоки профиля вырезаются скриптом из ответов aer.acs / wapi.aliexpress.ru (см. [Script]); QUIC для них запрещён выше.
+# Главная: полка плиток «Звёздные купоны» / бренды под иконками категорий; лента «Для вас»: рекламные товары, после них
+# товары снова по два в ряд (без широких карточек).
+
+# ──────────────────────── DDX FITNESS ───────────────────────
+# Карусель баннеров на главной: запрос списка баннеров (mobileapi.ddxfitness.ru/mobile_banners) получает ошибку, блок не
+# рисуется (см. [URL Rewrite]). Крупные ответы сервера DDX при расшифровке обрываются (тренеры в «Календаре», видео,
+# абонементы, сторис), поэтому GET-запросы DDX скрипт повторяет сам и отдаёт приложению полученный ответ, сторис — пустым
+# списком (см. [Script]). QUIC запрещён выше.
+
+# ──────────────── ОБЩИЕ SDK ───────────────
+DOMAIN,firebaselogging-pa.googleapis.com,REJECT-DROP
+DOMAIN-SUFFIX,app-analytics-services.com,REJECT-DROP
+
+# ───────────── ОПЦИОНАЛЬНО — ВЫКЛЮЧЕНО ─────────────
+# Mindbox — маркетинговые всплывашки/рассылки в СДЭК. Может сломать пуш-уведомления о посылках.
+# DOMAIN,api.mindbox.ru,REJECT-DROP
+# Опросы Яндекса и UXFeedback:
+# DOMAIN,surveys.yandex.ru,REJECT
+# DOMAIN-SUFFIX,uxfeedback.ru,REJECT-DROP
+
+[Script]
+# Один скрипт на все приложения. Скрипт берётся из репозитория github.com/Melidovskiy/ru-apps-adblock (ветка main)
+RU-AdBlock = type=http-response,pattern=^https:\/\/(banners-bt\.wildberries\.ru(:443)?\/api\/|home-service\.wildberries\.ru(:443)?\/home-service\/api\/|marketing-info\.wildberries\.ru(:443)?\/|specials\.wildberries\.ru(:443)?\/|brandzones\.wildberries\.ru(:443)?\/|wbxoofex\.wildberries\.ru(:443)?\/|api-ios\.wildberries\.ru(:443)?\/__internal\/(?!card\/)|static-basket-\d+\.wb(basket)?\.ru(:443)?\/vol\d+\/data\/|api\.ozon\.ru(:443)?\/api\/composer-api\.bx\/(page|widget)\/json\/|mapi\.market\.yandex\.net(:443)?\/api\/screen\/|tc\.mobile\.yandex\.net(:443)?\/|app\.avito\.ru(:443)?\/api\/\d+\/(main|items|search|br|favorites\/items\/(widgets|list))|mobileapp\.russianpost\.ru(:443)?\/mobile-api\/|my\.cdek\.ru(:443)?\/|apps-config\.wildberries\.ru(:443)?\/config\/|aer\.acs\.aliexpress\.ru(:443)?\/|wapi\.aliexpress\.ru(:443)?\/|finance\.wb\.ru(:443)?\/|wb-wallet\.wildberries\.ru(:443)?\/|mobileapi\.ddxfitness\.ru(:443)?\/stories\/?(\?|$)),requires-body=true,max-size=10485760,timeout=10,engine=webview,script-path=https://raw.githubusercontent.com/Melidovskiy/ru-apps-adblock/main/ru-adblock.js,argument=debug,enable=true
+# WB: запрос конфига приложения без If-None-Match — сервер всегда отдаёт его целиком, и приложение
+# сохраняет копию, уже исправленную скриптом (иначе ответ 304 и старая копия из кэша)
+RU-AdBlock-Config = type=http-request,pattern=^https:\/\/apps-config\.wildberries\.ru(:443)?\/config\/api\/v\d+\/config\?,requires-body=false,timeout=5,script-path=https://raw.githubusercontent.com/Melidovskiy/ru-apps-adblock/main/ru-adblock.js,argument=debug,enable=true
+# DDX Fitness: GET-запросы скрипт повторяет сам ($httpClient) и отдаёт приложению ответ — при расшифровке крупные ответы
+# DDX обрываются. Если повтор не удался, запрос идёт как обычно.
+RU-AdBlock-DDX = type=http-request,pattern=^https:\/\/mobileapi\.ddxfitness\.ru(:443)?\/,requires-body=false,timeout=20,script-path=https://raw.githubusercontent.com/Melidovskiy/ru-apps-adblock/main/ru-adblock.js,argument=debug,enable=true
+
+[URL Rewrite]
+# Почта России: картинки рекламных баннеров и «Спецпредложений» -> прозрачная 1px-картинка
+^https:\/\/mobileapp\.russianpost\.ru(:443)?\/(mobile-api\/method\/[\d.]+\/adv\.get\.image\/|app\/specialoffers\/) - reject-img
+# Невидимые баннеры-пустышки (WB): их картинка -> прозрачная 1px
+^https:\/\/[^\/]+\/_ruadb\/ - reject-img
+# WB: логотип рекламной шапки главной («находки из Китая», внутри картинки — «РЕКЛАМА … ЕРИД») -> прозрачная 1px.
+# Работает сразу; после перезапуска WB шапка исчезает целиком (выключена в конфиге). Детский режим (kids_mode/) не трогаем.
+^https:\/\/static-basket-\d+\.wb(basket)?\.ru(:443)?\/vol\d+\/mobile_creative\/promo_homepage\/[^\/]+\.(png|webp|jpe?g)(\?|$) - reject-img
+# СДЭК, главная: блок «Реклама · Горячие предложения · Шопинг >» — при пустом списке заголовок остаётся,
+# поэтому запрос ленты главной получает ошибку и блок не рисуется. Раздел «Шопинг» (другой screen) не трогается.
+^https:\/\/my\.cdek\.ru(:443)?\/api\/product-aggregator\/v\d+\/feed\?(.*&)?screen=MOBILE_MAIN - reject
+# DDX Fitness, главная: карусель баннеров («Техника важна! Сканируй…» и др.) — список приходит с /mobile_banners. Запрос
+# получает ошибку, карусель не рисуется.
+^https:\/\/mobileapi\.ddxfitness\.ru(:443)?\/mobile_banners - reject
+
+[MITM]
+hostname = %APPEND% banners-bt.wildberries.ru, apps-config.wildberries.ru, home-service.wildberries.ru, marketing-info.wildberries.ru, specials.wildberries.ru, brandzones.wildberries.ru, wbxoofex.wildberries.ru, api-ios.wildberries.ru, static-basket-01.wbbasket.ru, static-basket-02.wbbasket.ru, static-basket-03.wbbasket.ru, static-basket-01.wb.ru, api.ozon.ru, mapi.market.yandex.net, tc.mobile.yandex.net, app.avito.ru, mobileapp.russianpost.ru, my.cdek.ru, aer.acs.aliexpress.ru, wapi.aliexpress.ru, finance.wb.ru, wb-wallet.wildberries.ru, mobileapi.ddxfitness.ru
+# DDX Fitness: mobileapi.ddxfitness.ru (последний в строке) — баннеры и сторис на главной. Если в DDX всё равно не грузятся
+# разделы (тренеры, видео, абонемент) — уберите «, mobileapi.ddxfitness.ru» из строки hostname (вернутся баннеры и сторис).
