@@ -5,6 +5,7 @@
     banner.html                — шапка README, 1280×520 (снимок в 2x → banner.png)
     banner.html?kind=social    — превью ссылок, 1280×640 (→ Settings → Social preview)
   Приложения в блоке — список APPS внизу: [иконка, название, что убирается].
+  В README картинка показывается уменьшенной примерно втрое, поэтому шрифты здесь намеренно крупные.
 -->
 <html lang="ru">
 <head>
@@ -13,7 +14,7 @@
 <title>ru-apps-adblock banner</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=JetBrains+Mono:wght@800&display=block" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@800&display=block" rel="stylesheet">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { background: transparent; }
@@ -30,7 +31,7 @@
       linear-gradient(135deg, #1d1d1f 0%, #0c0c0d 55%, #050505 100%);
   }
   .card::after {
-    content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .07; mix-blend-mode: overlay;
+    content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .05; mix-blend-mode: overlay;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
   html[data-kind="readme"] .card { border-radius: 22px; border: 1px solid rgba(255, 255, 255, .10); }
@@ -38,18 +39,18 @@
 
   .left { min-width: 0; }
   h1 { font-family: 'JetBrains Mono', monospace; font-weight: 800; font-size: var(--fs-title); letter-spacing: -.03em; line-height: 1; color: #fff; white-space: nowrap; }
-  .sub { font-size: var(--fs-sub); line-height: 1.45; color: rgba(255, 255, 255, .92); margin-top: var(--sp1); max-width: var(--sub-w); text-wrap: balance; }
+  .sub { font-size: var(--fs-sub); font-weight: 500; line-height: 1.4; color: #fff; margin-top: var(--sp1); max-width: var(--sub-w); text-wrap: balance; }
 
-  .box { flex: none; width: var(--box); height: var(--box); border-radius: 24px; padding: var(--box-pad);
-         background: linear-gradient(160deg, rgba(255, 255, 255, .07), rgba(255, 255, 255, .02));
-         border: 1px solid rgba(255, 255, 255, .11); box-shadow: 0 30px 60px rgba(0, 0, 0, .45), inset 0 1px 0 rgba(255, 255, 255, .06);
-         display: flex; flex-direction: column; justify-content: space-between; }
-  .row { display: grid; grid-template-columns: var(--ico) var(--name-w) 1fr; align-items: center; column-gap: var(--col-gap); flex: 1; }
-  .row + .row { border-top: 1px solid rgba(255, 255, 255, .07); }
-  .row svg { width: var(--ico); height: var(--ico); stroke: #fff; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
-  .row b { font-weight: 500; font-size: var(--fs-name); color: #f2f2f2; white-space: nowrap; }
-  .row span { font-size: var(--fs-what); color: #9a9a9a; white-space: nowrap; }
-  .row.more b { grid-column: 2 / 4; color: #cfcfcf; }
+  .box { flex: none; width: var(--box); height: var(--box); border-radius: 26px; padding: var(--box-pad);
+         background: linear-gradient(160deg, rgba(255, 255, 255, .08), rgba(255, 255, 255, .025));
+         border: 1.5px solid rgba(255, 255, 255, .14); box-shadow: 0 30px 60px rgba(0, 0, 0, .45), inset 0 1px 0 rgba(255, 255, 255, .06);
+         display: flex; flex-direction: column; }
+  /* Строка: иконка слева, справа от неё — название и под ним что убирается */
+  .row { display: flex; align-items: center; gap: var(--col-gap); flex: 1; }
+  .row + .row { border-top: 1.5px solid rgba(255, 255, 255, .09); }
+  .row svg { flex: none; width: var(--ico); height: var(--ico); stroke: #fff; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .row b { display: block; font-weight: 600; font-size: var(--fs-name); line-height: 1.15; color: #fff; white-space: nowrap; }
+  .row span { display: block; font-size: var(--fs-what); line-height: 1.2; color: #b8b8b8; margin-top: .22em; white-space: nowrap; }
 </style>
 </head>
 <body>
@@ -73,7 +74,7 @@
   <symbol id="mail" viewBox="0 0 24 24"><rect x="2.5" y="4.5" width="19" height="15" rx="2"/><path d="m21.5 7-8.4 5.4a2 2 0 0 1-2.2 0L2.5 7"/></symbol>
   <symbol id="dumbbell" viewBox="0 0 24 24"><path d="M6.5 6.5v11M3.5 9v6M17.5 6.5v11M20.5 9v6M6.5 12h11"/></symbol>
   <!-- «и множество других»: три точки в круге -->
-  <symbol id="more" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><circle cx="7.8" cy="12" r=".6" fill="#fff"/><circle cx="12" cy="12" r=".6" fill="#fff"/><circle cx="16.2" cy="12" r=".6" fill="#fff"/></symbol>
+  <symbol id="more" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><circle cx="7.8" cy="12" r=".7" fill="#fff"/><circle cx="12" cy="12" r=".7" fill="#fff"/><circle cx="16.2" cy="12" r=".7" fill="#fff"/></symbol>
 </svg>
 
 <script>
@@ -84,18 +85,18 @@
     ['car',  'Яндекс Go',   'лента плиток, баннеры']
   ];
   document.querySelector('.box').innerHTML = APPS.map(function (a) {
-    return '<div class="row"><svg><use href="#' + a[0] + '"/></svg><b>' + a[1] + '</b><span>' + a[2] + '</span></div>';
-  }).join('') + '<div class="row more"><svg><use href="#more"/></svg><b>И множество других</b></div>';
+    return '<div class="row"><svg><use href="#' + a[0] + '"/></svg><div><b>' + a[1] + '</b><span>' + a[2] + '</span></div></div>';
+  }).join('') + '<div class="row"><svg><use href="#more"/></svg><div><b>И множество других</b></div></div>';
 
   var q = new URLSearchParams(location.search);
   var kind = q.get('kind') === 'social' ? 'social' : 'readme';
   document.documentElement.dataset.kind = kind;
   var S = kind === 'social'
-    ? { w: 1280, h: 640, padX: 76, gap: 52, title: 74, sub: 25, subW: 600, sp1: 26, box: 440, boxPad: 30, ico: 24, nameW: 120, colGap: 16, name: 19, what: 16 }
-    : { w: 1280, h: 520, padX: 68, gap: 52, title: 78, sub: 24, subW: 660, sp1: 24, box: 390, boxPad: 26, ico: 22, nameW: 108, colGap: 14, name: 17.5, what: 14.5 };
+    ? { w: 1280, h: 640, padX: 64, gap: 44, title: 74, sub: 30, subW: 640, sp1: 28, box: 470, boxPad: 32, ico: 34, colGap: 20, name: 27, what: 21 }
+    : { w: 1280, h: 520, padX: 60, gap: 44, title: 80, sub: 29, subW: 690, sp1: 26, box: 420, boxPad: 26, ico: 30, colGap: 18, name: 25, what: 20 };
   var r = document.documentElement.style;
   [['--w', S.w], ['--h', S.h], ['--pad-x', S.padX], ['--gap', S.gap], ['--fs-title', S.title], ['--fs-sub', S.sub],
-   ['--sub-w', S.subW], ['--sp1', S.sp1], ['--box', S.box], ['--box-pad', S.boxPad], ['--ico', S.ico], ['--name-w', S.nameW], ['--col-gap', S.colGap],
+   ['--sub-w', S.subW], ['--sp1', S.sp1], ['--box', S.box], ['--box-pad', S.boxPad], ['--ico', S.ico], ['--col-gap', S.colGap],
    ['--fs-name', S.name], ['--fs-what', S.what]
   ].forEach(function (p) { r.setProperty(p[0], p[1] + 'px'); });
   document.body.dataset.ready = '1';
