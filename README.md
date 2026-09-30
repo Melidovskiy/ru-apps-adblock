@@ -124,8 +124,6 @@ https://raw.githubusercontent.com/Melidovskiy/ru-apps-adblock/main/RU-Apps-AdBlo
 | `tests/run.js` | тесты: `node tests/run.js` |
 | `.github/workflows/test.yml` | автоматический запуск тестов на GitHub |
 | `.github/ISSUE_TEMPLATE/bug_report.yml` | шаблон сообщения о проблеме |
-| `.claude/settings.json` | настройки Claude Code: коммиты и pull request без подписей Claude |
-| `assets/` | шапка README (`banner.png`) и её исходник `banner.html` |
 | `LICENSE` | лицензия MIT |
 
 ## Разработка
