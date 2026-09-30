@@ -1,4 +1,4 @@
-# RU Apps AdBlock
+<img alt="ru-apps-adblock — модуль Shadowrocket: убирает рекламу и навязчивые рекомендации из Ozon, Wildberries, Яндекс Маркета, Яндекс Go, Avito, СДЭК, Почты России, AliExpress и DDX Fitness" src="assets/banner.png">
 
 [![Тесты](https://github.com/Melidovskiy/ru-apps-adblock/actions/workflows/test.yml/badge.svg)](https://github.com/Melidovskiy/ru-apps-adblock/actions/workflows/test.yml)
 [![Version](https://img.shields.io/badge/version-3.20-blue)](ru-adblock.js)
@@ -125,6 +125,7 @@ https://raw.githubusercontent.com/Melidovskiy/ru-apps-adblock/main/RU-Apps-AdBlo
 | `.github/workflows/test.yml` | автоматический запуск тестов на GitHub |
 | `.github/ISSUE_TEMPLATE/bug_report.yml` | шаблон сообщения о проблеме |
 | `.claude/settings.json` | настройки Claude Code: коммиты и pull request без подписей Claude |
+| `assets/` | шапка README (`banner.png`) и её исходник `banner.html` |
 | `LICENSE` | лицензия MIT |
 
 ## Разработка
@@ -139,6 +140,8 @@ https://raw.githubusercontent.com/Melidovskiy/ru-apps-adblock/main/RU-Apps-AdBlo
 GitHub Actions запускает тесты и проверку синтаксиса ES5 при каждом изменении и в каждом pull request — до того как изменение попадёт в `main` и на телефоны.
 
 Если поведение скрипта изменено намеренно, пересчитайте эталоны: `node tests/run.js --update` и замените блок `EXPECTED` в `tests/run.js` выведенным. При смене версии обновите её в трёх местах: заголовок `ru-adblock.js`, `#!name` модуля и значок в README.
+
+Шапка README и картинка для превью ссылок рисуются из `assets/banner.html`: как открыть и обновить, написано в начале файла.
 
 ## Правовая информация
 
