@@ -1,11 +1,11 @@
-<img alt="ru-apps-adblock — модуль Shadowrocket: убирает рекламу и навязчивые рекомендации из Ozon, Wildberries, Яндекс Маркета, Яндекс Go, Avito, СДЭК, Почты России, AliExpress и DDX Fitness" src="assets/banner.png">
+<img alt="ru-apps-adblock — модуль Shadowrocket: убирает рекламу и навязчивые рекомендации из Ozon, Wildberries, Яндекс Маркета, Яндекс Go, Avito, СДЭК, Почты России, AliExpress, DDX Fitness и 2GIS" src="assets/banner.png">
 
 [![Тесты](https://github.com/Melidovskiy/ru-apps-adblock/actions/workflows/test.yml/badge.svg)](https://github.com/Melidovskiy/ru-apps-adblock/actions/workflows/test.yml)
-[![Version](https://img.shields.io/badge/version-3.20-blue)](ru-adblock.js)
+[![Version](https://img.shields.io/badge/version-3.21-blue)](ru-adblock.js)
 [![Shadowrocket](https://img.shields.io/badge/Shadowrocket-module-orange)](RU-Apps-AdBlock.sgmodule)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-Модуль и скрипт для [Shadowrocket](https://apps.apple.com/app/shadowrocket/id932747118) (iOS), которые убирают рекламу и навязчивые рекомендации из популярных российских приложений: Ozon, Wildberries, Яндекс Маркета, Яндекс Go, Avito, СДЭК, Почты России, AliExpress и DDX Fitness.
+Модуль и скрипт для [Shadowrocket](https://apps.apple.com/app/shadowrocket/id932747118) (iOS), которые убирают рекламу и навязчивые рекомендации из популярных российских приложений: Ozon, Wildberries, Яндекс Маркета, Яндекс Go, Avito, СДЭК, Почты России, AliExpress, DDX Fitness и 2GIS.
 
 Вся обработка идёт **на вашем телефоне**: скрипт получает ответ сервера приложения, вырезает из него рекламный блок и отдаёт приложению остальное. Никуда, кроме серверов самих приложений, данные не отправляются.
 
@@ -36,6 +36,7 @@
 | **Почта России** | Карусель рекламных баннеров и места рекламы Яндекса на главной, «Спецпредложения» |
 | **AliExpress** | На главной — полка «Звёздные купоны» и витрины брендов; в ленте «Для вас» — рекламные товары (оставшиеся снова идут по два в ряд); в профиле и корзине — «Товары от партнеров», «Вы смотрели», «Одна цена», «Рекомендуем вам» |
 | **DDX Fitness** | Карусель баннеров и сторис на главной |
+| **2GIS** | На экране поиска — карусель сторис, раздел «Рекомендуем вам» (подборки, рубрики, места и реклама) и рекламный баннер под ним; значок «+360 ★» с наградами, которые ждут получения (на аватаре и в профиле) |
 
 Также блокируются рекламные и трекинговые сервисы: AppMetrica, Adjust, AppsFlyer, рекламная сеть Яндекса, рекламная платформа СДЭК, аналитика Avito и WB и другие (полный список — в разделе `[Rule]` модуля).
 
@@ -126,4 +127,4 @@ https://raw.githubusercontent.com/Melidovskiy/ru-apps-adblock/main/RU-Apps-AdBlo
 
 Проект предоставляется «как есть». Автор не гарантирует работоспособность правил после обновлений приложений и не несёт ответственности за изменения в работе сторонних сервисов, вызванные использованием проекта.
 
-RU Apps AdBlock — независимый проект. Упоминание Ozon, Wildberries, Яндекса, Avito, СДЭК, Почты России, AliExpress, DDX Fitness и других сервисов не означает партнёрства, одобрения или иного отношения между ними и автором проекта.
+RU Apps AdBlock — независимый проект. Упоминание Ozon, Wildberries, Яндекса, Avito, СДЭК, Почты России, AliExpress, DDX Fitness, 2GIS и других сервисов не означает партнёрства, одобрения или иного отношения между ними и автором проекта.

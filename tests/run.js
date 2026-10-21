@@ -102,8 +102,12 @@ tx('M7 маршрутизация адресов: что идёт в скрип�
   const pat = new RegExp((MOD.match(/^RU-AdBlock = type=http-response,pattern=(.*?),requires-body/m) || [])[1]);
   const rw = MOD.split('\n').filter((l) => /^\^/.test(l)).map((l) => new RegExp(l.slice(0, l.lastIndexOf(' - '))));
   const inScript = ['https://wapi.aliexpress.ru/mobile-layout/home/fusion', 'https://api.ozon.ru/api/composer-api.bx/page/json/v2?url=/my',
-    'https://finance.wb.ru/api/offers-api/v1/product/offers', 'https://mobileapi.ddxfitness.ru/stories?x=1', 'https://tc.mobile.yandex.net/4.0/urbanads/sdk?'];
-  const notScript = ['https://mobileapi.ddxfitness.ru/v2/employees/positions?x', 'https://api.finance.ozon.ru/mobile/obank/features', 'https://www.gosuslugi.ru/'];
+    'https://finance.wb.ru/api/offers-api/v1/product/offers', 'https://mobileapi.ddxfitness.ru/stories?x=1', 'https://tc.mobile.yandex.net/4.0/urbanads/sdk?',
+    'https://stories.api.2gis.ru/3.0/stories?locale=ru_RU', 'https://tips-api.2giskz.app/api/1.0/tips?x=1', 'https://advisor.api.2gis.ru/api/3.0/ads/advise/gta?x',
+    'https://reward-system.2gis.com/progress', 'https://reward-system.2giskz.app/progress?x=1'];
+  const notScript = ['https://mobileapi.ddxfitness.ru/v2/employees/positions?x', 'https://api.finance.ozon.ru/mobile/obank/features', 'https://www.gosuslugi.ru/',
+    'https://advisor.api.2gis.ru/api/3.0/ads/sync', 'https://reward-system.2gis.com/assigned', 'https://social-graph.2gis.com/social-graph/users/friendship/list',
+    'https://stories.api.2gis.ru/3.0/stories/viewed'];
   inScript.forEach((u) => { if (!pat.test(u)) throw new Error('не идёт в скрипт: ' + u); });
   notScript.forEach((u) => { if (pat.test(u)) throw new Error('лишний в скрипте: ' + u); });
   if (!rw.some((re) => re.test('https://mobileapi.ddxfitness.ru/mobile_banners?request_source=mobile_app'))) throw new Error('баннеры DDX не отклоняются');
@@ -387,6 +391,39 @@ t('Y4 urbanads/sdk: whole ad response may go (no 60% abort)', { url: 'https://tc
   if (!p) throw new Error('not modified: ' + r.logs.join(' | ')); eq(p.ads, []); eq(p.ttl, 60);
 });
 t('Y5 urban-ads type on other Go screens untouched by this rule', { url: 'https://tc.mobile.yandex.net/4.0/other/state', body: { items: [{ type: 'urban-ads' }, { type: 'x', note: pad }] } }, (p, out, r) => p === null);
+}
+
+group('2. 2GIS');
+{
+const story = (n) => ({ id: 's' + n, content: { preview: { text: 'Сторис ' + n, backgroundUrl: 'https://disk.2gis.com/s' + n + '.jpg' },
+  slides: [{ id: 'sl' + n, title: 'Слайд', template: 'default', backgroundUrl: 'https://disk.2gis.com/sl' + n + '.jpg' }] } });
+t('G1 сторис на экране поиска -> пустой список', { url: 'https://stories.api.2gis.ru/3.0/stories?locale=ru_RU', body: [story(1), story(2), story(3)] },
+  (p) => { eq(p, []); });
+t('G2 то же на зеркале 2giskz.app', { url: 'https://stories-api.2giskz.app/3.0/stories', body: [story(1)] }, (p) => { eq(p, []); });
+const tips = { dashboard_id: 'd1', template: 'two_columns', columns: [
+  [{ type: 'public_collection', height: 2, content: { collection_id: 'c1', title: 'Дикая Москва', subtitle: '7 places', cover_url: 'https://x/c.jpg' },
+     action: { type: 'open_public_collection', value: 'c1' } },
+   { type: 'metarubric', height: 1, content: { metarubric_id: 9, title: 'Places to stay', subtitle: '5 021 places' }, action: { type: 'search_by_metarubric', value: '9' } }],
+  [{ type: 'ad', height: 1, content: { title: 'Дымзавод', owner_id: 70000001234567890, ads_id: 'a1', ads_alg: 2, auction_id: 'au', position: 1 },
+     action: { type: 'open_firm', value: '70000001234567890' } }]] };
+t('G3 «Рекомендуем вам»: колонки пустые, остальное как было', { url: 'https://tips.api.2gis.ru/api/1.0/tips?lang=ru', body: tips },
+  (p) => { eq(p, { dashboard_id: 'd1', template: 'two_columns', columns: [] }); });
+const ads = { banners: [{ bannerId: 'b1', adsId: 'a', isAds: true, erid: ['2Vtzqx'], legalName: 'ПАО Сбербанк',
+  content: { text: 'Отвечайте на вопросы и получайте сундуки с сюрпризами', options: { actions: [{ type: 'link', caption: 'Городской квиз' }], images: ['https://x/i.png'] } } }] };
+t('G4 рекламный баннер (advisor …/ads/advise/…) -> пустой список', { url: 'https://advisor.api.2gis.ru/api/3.0/ads/advise/gta?x=1', body: ads },
+  (p) => { eq(p, { banners: [] }); });
+const progress = { xp: 1240, current_level: { level: 3, prizes: [{ name: 'flame', type: 'tail', status: 'received' }] },
+  next_level: { level: 4, prizes: [{ name: 'festive', type: 'tail' }] },
+  loot: { achievements: { scheduled: [{ title: 'Your welcome bonus', xp: 200 }, { title: 'Build a car route to work', xp: 160 }] } } };
+t('G5 значок «+360 ★»: награды в loot -> пустые, уровень и призы как были', { url: 'https://reward-system.2gis.com/progress', body: progress },
+  (p) => { const want = clone(progress); want.loot.achievements.scheduled = []; eq(p, want); });
+t('G6 длинные id в ответе 2GIS не округляются', { url: 'https://tips.api.2gis.ru/api/1.0/tips', body: '{"dashboard_id":70000001234567891,"columns":[[{"type":"card"}]]}' },
+  (p, out) => { eq(out, '{"dashboard_id":70000001234567891,"columns":[]}'); });
+t('G7 пустые списки и другие ответы 2GIS не меняются', { url: 'https://stories.api.2gis.ru/3.0/stories', body: [] },
+  (p, out, r) => { eq(r.result, {}); });
+t('G8 адрес 2GIS без правила — как есть (без общего поиска рекламы)', { url: 'https://reward-system.2gis.com/assigned',
+  body: { achievements: { daily: [{ title: 'Write a review', label: 'Реклама', image: 'https://x/y.png' }, { title: 'b', image: 'https://x/z.png' }] } } },
+  (p, out, r) => { eq(r.result, {}); });
 }
 
 // ═════════════════════ 3. Эталоны ═════════════════════

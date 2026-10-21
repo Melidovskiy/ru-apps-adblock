@@ -1,6 +1,6 @@
 /*
- * RU Apps AdBlock v3.20 — фильтр ответов для Shadowrocket (type=http-response, requires-body=true)
- * Ozon / Wildberries / Яндекс Маркет / Яндекс Go / Avito / СДЭК / Почта России / AliExpress / DDX Fitness
+ * RU Apps AdBlock v3.21 — фильтр ответов для Shadowrocket (type=http-response, requires-body=true)
+ * Ozon / Wildberries / Яндекс Маркет / Яндекс Go / Avito / СДЭК / Почта России / AliExpress / DDX Fitness / 2GIS
  *
  * Как находит рекламу: по закону о маркировке (38-ФЗ, ОРД) каждое объявление несёт токен erid
  * и пометку «Реклама»/«Ad» с данными рекламодателя — всё это приходит в JSON вместе с объявлением.
@@ -76,6 +76,10 @@
  *       скрипт повторяет сам ($httpClient, обычная проверка сертификата) и отдаёт приложению полученный ответ (сторис —
  *       пустым списком); при ошибке запрос идёт как обычно. Яндекс Go, экран доставки: рекламный баннер (элемент
  *       type=urban-ads) убирается; ответ рекламной сети 4.0/urbanads/… можно очищать целиком.
+ * v3.21: 2GIS — на экране поиска убираются карусель сторис (stories.api …/stories), раздел «Рекомендуем вам»
+ *       (tips.api …/tips: подборки, рубрики, места и реклама) и рекламный баннер под ним (advisor.api …/ads/advise/…,
+ *       «Реклама · ПАО Сбербанк…»); значок «+360 ★» на аватаре и в профиле — награды, которые ждут получения
+ *       (reward-system …/progress, loot). Те же адреса на зеркалах *.2giskz.app.
  *
  * Страховки: тело не меняется, если ничего не найдено; подъём вверх не выше блока в 20% ответа;
  * один удаляемый элемент не больше 40% ответа; если суммарно удаляется больше 60% — ответ как есть.
@@ -216,6 +220,39 @@
                    (Array.isArray(ds.data) ? '[array]' : Object.keys(ds.data || {}).join('/')));
     if (!ds.n) return $done({});
     return $done({ body: restoreBig(JSON.stringify(ds.data)) });
+  }
+
+  // ───────── 2GIS ─────────
+  // Экран поиска: карусель сторис (stories.api …/3.0/stories — весь список: «Эволюция купальника», «Где лучше открыть
+  // бизнес?»…), раздел «Рекомендуем вам» (tips.api …/api/1.0/tips: колонки плиток — подборки, рубрики, места и реклама
+  // с ads_id) и рекламный баннер под ним (advisor.api …/api/3.0/ads/advise/… — banners с isAds/erid, «Реклама · ПАО
+  // Сбербанк…»). Значок «+360 ★» на аватаре и в профиле — награды, которые ждут получения (reward-system …/progress,
+  // списки внутри loot); уровень и полученные награды не трогаются. Списки -> пустые, остальное (и схема ответа) — как
+  // было. Те же адреса есть на зеркалах *.2giskz.app, приложение ходит на оба. Другие ответы 2GIS — как есть.
+  var IS_2GIS = /(^|\.)2gis\.(ru|com)$|(^|\.)2giskz\.app$/.test(host);
+  var GIS_RULE = !IS_2GIS ? '' :
+    /^stories(\.api\.2gis\.ru|-api\.2giskz\.app)$/.test(host) && /^\/\d+\.\d+\/stories\/?$/.test(path) ? 'stories' :
+    /^tips(\.api\.2gis\.ru|-api\.2giskz\.app)$/.test(host) && /^\/api\/\d+\.\d+\/tips\/?$/.test(path) ? 'tips' :
+    /^advisor(\.api\.2gis\.ru|-api\.2giskz\.app)$/.test(host) && /^\/api\/\d+\.\d+\/ads\/advise\//.test(path) ? 'ads' :
+    /^reward-system\.2gis(\.com|kz\.app)$/.test(host) && /^\/progress\/?$/.test(path) ? 'loot' : '';
+  if (IS_2GIS) {
+    var gr = { n: 0, at: [] };
+    var gemp = function (o, k, p) {
+      if (o && typeof o === 'object' && Array.isArray(o[k]) && o[k].length) { gr.n += o[k].length; gr.at.push(p + k + '[' + o[k].length + ']'); o[k] = []; }
+    };
+    if (GIS_RULE === 'stories') { if (Array.isArray(data) && data.length) { gr.n = data.length; gr.at.push('[' + data.length + ']'); data = []; } }
+    else if (GIS_RULE === 'tips') gemp(data, 'columns', '.');
+    else if (GIS_RULE === 'ads') gemp(data, 'banners', '.');
+    else if (GIS_RULE === 'loot' && data && data.loot && typeof data.loot === 'object') {
+      for (var gk in data.loot) {
+        var gv = data.loot[gk];
+        if (Array.isArray(gv)) gemp(data.loot, gk, '.loot.');
+        else if (gv && typeof gv === 'object') for (var gk2 in gv) gemp(gv, gk2, '.loot.' + gk + '.');
+      }
+    }
+    if (DEBUG) log('2GIS ' + (GIS_RULE || 'not handled') + ': ' + (gr.n ? 'emptied ' + gr.at.join(',') : 'nothing to empty'));
+    if (!gr.n) return $done({});
+    return $done({ body: restoreBig(JSON.stringify(data)) });
   }
 
   var isAvito = /(^|\.)avito\.ru$/.test(host);
