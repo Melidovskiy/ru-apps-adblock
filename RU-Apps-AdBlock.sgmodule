@@ -1,5 +1,5 @@
 #!name=RU Apps AdBlock v3.22
-#!desc=Ozon / WB / Яндекс Маркет / Яндекс Go / Avito / СДЭК / Почта России / AliExpress / DDX Fitness / 2GIS. v3.22: 2GIS — реклама в «Рекомендуем вам», задания и награды, «Rate places».
+#!desc=Ozon / WB / Яндекс Маркет / Яндекс Go / Avito / СДЭК / Почта России / AliExpress / DDX Fitness / 2GIS. v3.22: 2GIS — рекламная база (баннеры маршрута, метки на карте), реклама в «Рекомендуем вам», задания и награды, «Rate places».
 
 [Rule]
 # ───── Запрет QUIC для расшифровываемых хостов: иначе HTTP/3 идёт мимо MITM и скрипта ─────
@@ -20,6 +20,8 @@ AND,((DOMAIN,advisor.api.2gis.ru),(PROTOCOL,UDP)),REJECT-NO-DROP
 AND,((DOMAIN,stories-api.2giskz.app),(PROTOCOL,UDP)),REJECT-NO-DROP
 AND,((DOMAIN,tips-api.2giskz.app),(PROTOCOL,UDP)),REJECT-NO-DROP
 AND,((DOMAIN,advisor-api.2giskz.app),(PROTOCOL,UDP)),REJECT-NO-DROP
+AND,((DOMAIN,binario-delivery.api.2gis.ru),(PROTOCOL,UDP)),REJECT-NO-DROP
+AND,((DOMAIN,binario-delivery-api.2giskz.app),(PROTOCOL,UDP)),REJECT-NO-DROP
 
 # ─────────────────────────── OZON ───────────────────────────
 DOMAIN-SUFFIX,weborama-tech.ru,REJECT-DROP
@@ -83,6 +85,10 @@ DOMAIN,bonuses-api.2giskz.app,REJECT
 # не рисуется. Отзывы в карточках мест загружаются как обычно.
 DOMAIN,checkin.2gis.com,REJECT
 DOMAIN,checkin.2giskz.app,REJECT
+# Рекламная база 2GIS (её описание — binario-delivery …/options/…, файлы — disk.2gis.com/casino-binario-delivery-production-ads/):
+# баннеры на экране маршрута («Кешбэк до 50% за парковку») и в навигаторе, рекламные метки и логотипы на карте, «короны»,
+# реклама в поиске и подсказках. Её запрос отклоняется (см. [URL Rewrite]); база мест (…/flags/…) скачивается как обычно.
+# Уже скачанная база остаётся у приложения, пока оно само её не обновит или не будет переустановлено.
 
 # ──────────────── ОБЩИЕ SDK ───────────────
 DOMAIN,firebaselogging-pa.googleapis.com,REJECT-DROP
@@ -119,8 +125,10 @@ RU-AdBlock-DDX = type=http-request,pattern=^https:\/\/mobileapi\.ddxfitness\.ru(
 # DDX Fitness, главная: карусель баннеров («Техника важна! Сканируй…» и др.) — список приходит с /mobile_banners. Запрос
 # получает ошибку, карусель не рисуется.
 ^https:\/\/mobileapi\.ddxfitness\.ru(:443)?\/mobile_banners - reject
+# 2GIS: описание рекламной базы (баннеры маршрута и навигатора, метки на карте, реклама в поиске) -> ошибка, база не скачивается
+^https:\/\/binario-delivery(\.api\.2gis\.ru|-api\.2giskz\.app)(:443)?\/api\/[\d.]+\/options\/ - reject
 
 [MITM]
-hostname = %APPEND% banners-bt.wildberries.ru, apps-config.wildberries.ru, home-service.wildberries.ru, marketing-info.wildberries.ru, specials.wildberries.ru, brandzones.wildberries.ru, wbxoofex.wildberries.ru, api-ios.wildberries.ru, static-basket-01.wbbasket.ru, static-basket-02.wbbasket.ru, static-basket-03.wbbasket.ru, static-basket-01.wb.ru, api.ozon.ru, mapi.market.yandex.net, tc.mobile.yandex.net, app.avito.ru, mobileapp.russianpost.ru, my.cdek.ru, aer.acs.aliexpress.ru, wapi.aliexpress.ru, finance.wb.ru, wb-wallet.wildberries.ru, mobileapi.ddxfitness.ru, stories.api.2gis.ru, tips.api.2gis.ru, advisor.api.2gis.ru, stories-api.2giskz.app, tips-api.2giskz.app, advisor-api.2giskz.app
+hostname = %APPEND% banners-bt.wildberries.ru, apps-config.wildberries.ru, home-service.wildberries.ru, marketing-info.wildberries.ru, specials.wildberries.ru, brandzones.wildberries.ru, wbxoofex.wildberries.ru, api-ios.wildberries.ru, static-basket-01.wbbasket.ru, static-basket-02.wbbasket.ru, static-basket-03.wbbasket.ru, static-basket-01.wb.ru, api.ozon.ru, mapi.market.yandex.net, tc.mobile.yandex.net, app.avito.ru, mobileapp.russianpost.ru, my.cdek.ru, aer.acs.aliexpress.ru, wapi.aliexpress.ru, finance.wb.ru, wb-wallet.wildberries.ru, mobileapi.ddxfitness.ru, stories.api.2gis.ru, tips.api.2gis.ru, advisor.api.2gis.ru, stories-api.2giskz.app, tips-api.2giskz.app, advisor-api.2giskz.app, binario-delivery.api.2gis.ru, binario-delivery-api.2giskz.app
 # DDX Fitness: mobileapi.ddxfitness.ru (последний в строке) — баннеры и сторис на главной. Если в DDX всё равно не грузятся
 # разделы (тренеры, видео, абонемент) — уберите «, mobileapi.ddxfitness.ru» из строки hostname (вернутся баннеры и сторис).

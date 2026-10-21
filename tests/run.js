@@ -111,6 +111,10 @@ tx('M7 маршрутизация адресов: что идёт в скрип�
   inScript.forEach((u) => { if (!pat.test(u)) throw new Error('не идёт в скрипт: ' + u); });
   notScript.forEach((u) => { if (pat.test(u)) throw new Error('лишний в скрипте: ' + u); });
   if (!rw.some((re) => re.test('https://mobileapi.ddxfitness.ru/mobile_banners?request_source=mobile_app'))) throw new Error('баннеры DDX не отклоняются');
+  ['https://binario-delivery.api.2gis.ru/api/1.0/options/32/en/ios?lastVersion=1', 'https://binario-delivery-api.2giskz.app/api/1.0/options/241/ru/ios']
+    .forEach((u) => { if (!rw.some((re) => re.test(u))) throw new Error('рекламная база 2GIS не отклоняется: ' + u); });
+  ['https://binario-delivery.api.2gis.ru/api/1.0/flags/32/en/ios?lastVersion=1']
+    .forEach((u) => { if (rw.some((re) => re.test(u))) throw new Error('лишний отказ: ' + u); });
 });
 
 // ═════════════════════ 2. Поведение по приложениям ═════════════════════
