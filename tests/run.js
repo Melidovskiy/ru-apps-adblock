@@ -104,10 +104,10 @@ tx('M7 маршрутизация адресов: что идёт в скрип�
   const inScript = ['https://wapi.aliexpress.ru/mobile-layout/home/fusion', 'https://api.ozon.ru/api/composer-api.bx/page/json/v2?url=/my',
     'https://finance.wb.ru/api/offers-api/v1/product/offers', 'https://mobileapi.ddxfitness.ru/stories?x=1', 'https://tc.mobile.yandex.net/4.0/urbanads/sdk?',
     'https://stories.api.2gis.ru/3.0/stories?locale=ru_RU', 'https://tips-api.2giskz.app/api/1.0/tips?x=1', 'https://advisor.api.2gis.ru/api/3.0/ads/advise/gta?x',
-    ];
+    'https://api.letterboxd.com/api/v0/me', 'https://api.letterboxd.com/api/v0/me/account-status?x=1'];
   const notScript = ['https://mobileapi.ddxfitness.ru/v2/employees/positions?x', 'https://api.finance.ozon.ru/mobile/obank/features', 'https://www.gosuslugi.ru/',
     'https://advisor.api.2gis.ru/api/3.0/ads/sync', 'https://reward-system.2gis.com/progress', 'https://social-graph.2gis.com/social-graph/users/friendship/list',
-    'https://stories.api.2gis.ru/3.0/stories/viewed'];
+    'https://stories.api.2gis.ru/3.0/stories/viewed', 'https://s.ltrbxd.com/static/img/x.png', 'https://letterboxd.com/film/x/'];
   inScript.forEach((u) => { if (!pat.test(u)) throw new Error('не идёт в скрипт: ' + u); });
   notScript.forEach((u) => { if (pat.test(u)) throw new Error('лишний в скрипте: ' + u); });
   if (!rw.some((re) => re.test('https://mobileapi.ddxfitness.ru/mobile_banners?request_source=mobile_app'))) throw new Error('баннеры DDX не отклоняются');
@@ -446,6 +446,18 @@ t('G8 адрес 2GIS без правила — как есть (без обще
   body: { achievements: { daily: [{ title: 'Write a review', label: 'Реклама', image: 'https://x/y.png' }, { title: 'b', image: 'https://x/z.png' }] } } },
   (p, out, r) => { eq(r.result, {}); });
 }
+
+group('2. Letterboxd');
+t('L1 статус аккаунта: hideAds -> true, showCustomPostersAds -> false', { url: 'https://api.letterboxd.com/api/v0/me/account-status',
+  body: { accountStatus: 'Active', hideAds: false, showCustomPostersAds: true } },
+  (p) => { eq(p, { accountStatus: 'Active', hideAds: true, showCustomPostersAds: false }); });
+t('L2 /me: переключатели участника, memberStatus как есть', { url: 'https://api.letterboxd.com/api/v0/me',
+  body: { member: { id: 'x', memberStatus: 'Member', hideAdsInContent: false, hideAds: false }, emailAddressValidated: true } },
+  (p) => { eq(p.member, { id: 'x', memberStatus: 'Member', hideAdsInContent: true, hideAds: true }); eq(p.emailAddressValidated, true); });
+t('L3 ответы без переключателей — как есть', { url: 'https://api.letterboxd.com/api/v0/films?x=1', body: { items: [{ id: 'f', name: 'Film', adult: false }], next: 'c' } },
+  (p, out, r) => { eq(r.result, {}); });
+t('L4 рекламу уже скрывают — как есть', { url: 'https://api.letterboxd.com/api/v0/me/account-status', body: { accountStatus: 'Active', hideAds: true } },
+  (p, out, r) => { eq(r.result, {}); });
 
 // ═════════════════════ 3. Эталоны ═════════════════════
 group('3. Эталоны типовых ответов');

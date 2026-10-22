@@ -1,12 +1,12 @@
-<img alt="ru-apps-adblock — модуль Shadowrocket: убирает рекламу и навязчивые рекомендации из Ozon, Wildberries, Яндекс Маркета, Яндекс Go, Avito, СДЭК, Почты России, AliExpress, DDX Fitness и 2GIS" src="assets/banner.png">
+<img alt="ru-apps-adblock — модуль Shadowrocket: убирает рекламу и навязчивые рекомендации из Ozon, Wildberries, Яндекс Маркета, Яндекс Go, Avito, СДЭК, Почты России, AliExpress, DDX Fitness, 2GIS и Letterboxd" src="assets/banner.png">
 
 [![Тесты](https://github.com/Melidovskiy/ru-apps-adblock/actions/workflows/test.yml/badge.svg)](https://github.com/Melidovskiy/ru-apps-adblock/actions/workflows/test.yml)
-[![Version](https://img.shields.io/badge/version-3.24-blue)](ru-adblock.js)
+[![Version](https://img.shields.io/badge/version-3.25-blue)](ru-adblock.js)
 [![Shadowrocket](https://img.shields.io/badge/Shadowrocket-module-orange)](RU-Apps-AdBlock.sgmodule)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Сайт](https://img.shields.io/badge/сайт-melidovskiy.github.io-111)](https://melidovskiy.github.io/ru-apps-adblock/)
 
-Модуль и скрипт для [Shadowrocket](https://apps.apple.com/app/shadowrocket/id932747118) (iOS), которые убирают рекламу и навязчивые рекомендации из популярных российских приложений: Ozon, Wildberries, Яндекс Маркета, Яндекс Go, Avito, СДЭК, Почты России, AliExpress, DDX Fitness и 2GIS.
+Модуль и скрипт для [Shadowrocket](https://apps.apple.com/app/shadowrocket/id932747118) (iOS), которые убирают рекламу и навязчивые рекомендации из популярных российских приложений и Letterboxd: Ozon, Wildberries, Яндекс Маркета, Яндекс Go, Avito, СДЭК, Почты России, AliExpress, DDX Fitness, 2GIS и Letterboxd.
 
 Вся обработка идёт **на вашем телефоне**: скрипт получает ответ сервера приложения, вырезает из него рекламный блок и отдаёт приложению остальное. Никуда, кроме серверов самих приложений, данные не отправляются.
 
@@ -38,6 +38,7 @@
 | **AliExpress** | На главной — полка «Звёздные купоны» и витрины брендов; в ленте «Для вас» — рекламные товары (оставшиеся снова идут по два в ряд); в профиле и корзине — «Товары от партнеров», «Вы смотрели», «Одна цена», «Рекомендуем вам» |
 | **DDX Fitness** | Карусель баннеров и сторис на главной |
 | **2GIS** | Рекламная база приложения: баннеры на экране маршрута и в навигаторе, рекламные метки на карте, «короны» и реклама в поиске (подробнее — в «Ограничениях»); на экране поиска — карусель сторис, в «Рекомендуем вам» — реклама, подборки и карточки мест (остаются только рубрики), рекламный баннер под ним, «Rate places» (там же и в профиле) и «Гид по городу» внизу экрана поиска; задания и награды — значок «+360 ★» на аватаре и «Tasks & Rewards» в профиле |
+| **Letterboxd** | Пустые рамки рекламы «REMOVE ADS» на вкладке Films и в профиле (сама реклама блокируется правилами Shadowrocket) |
 
 Также блокируются рекламные и трекинговые сервисы: AppMetrica, Adjust, AppsFlyer, рекламная сеть Яндекса, рекламная платформа СДЭК, аналитика Avito и WB и другие (полный список — в разделе `[Rule]` модуля).
 

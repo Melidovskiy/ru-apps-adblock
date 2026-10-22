@@ -1,6 +1,7 @@
 /*
- * RU Apps AdBlock v3.24 — фильтр ответов для Shadowrocket (type=http-response, requires-body=true)
- * Ozon / Wildberries / Яндекс Маркет / Яндекс Go / Avito / СДЭК / Почта России / AliExpress / DDX Fitness / 2GIS
+ * RU Apps AdBlock v3.25 — фильтр ответов для Shadowrocket (type=http-response, requires-body=true)
+ * Ozon / Wildberries / Яндекс Маркет / Яндекс Go / Avito / СДЭК / Почта России / AliExpress / DDX Fitness / 2GIS /
+ * Letterboxd
  *
  * Как находит рекламу: по закону о маркировке (38-ФЗ, ОРД) каждое объявление несёт токен erid
  * и пометку «Реклама»/«Ad» с данными рекламодателя — всё это приходит в JSON вместе с объявлением.
@@ -95,6 +96,8 @@
  * v3.24: 2GIS — в «Рекомендуем вам» остаются только рубрики («Places to stay», «Restaurants», «Discounts», «All
  *       categories»…): реклама, подборки и карточки мест убираются, а оставшиеся плитки раскладываются поровну в две
  *       колонки — неровные колонки приложение отбрасывало (см. v3.23).
+ * v3.25: Letterboxd — пустые рамки рекламы («REMOVE ADS» на вкладке Films и в профиле): в ответах API переключатели
+ *       hideAds / hideAdsInContent -> true, show…Ads -> false. Статус участника и платные функции не трогаются.
  *
  * Страховки: тело не меняется, если ничего не найдено; подъём вверх не выше блока в 20% ответа;
  * один удаляемый элемент не больше 40% ответа; если суммарно удаляется больше 60% — ответ как есть.
@@ -216,8 +219,16 @@
   // WB Кошелёк (finance.wb.ru / wb-wallet.wildberries.ru): только свои правила, без общего поиска рекламы, см. ниже
   var IS_WB_FIN = /^(finance\.wb\.ru|wb-wallet\.wildberries\.ru)$/.test(host);
 
+  // Letterboxd (api.letterboxd.com): сама реклама (Playwire, Google) и так не грузится, но приложение оставляет на её
+  // месте пустую рамку «REMOVE ADS» (вкладка Films, профиль), пока API говорит, что рекламу показывать нужно. Переключатели
+  // рекламы в ответах: hideAds / hideAdsInContent -> true, show…Ads (showCustomPostersAds) -> false. Статус участника
+  // (memberStatus) и платные функции не трогаются. Ответы без этих полей — как есть, без разбора и общего поиска рекламы.
+  var IS_LB = /^api\.letterboxd\.com$/.test(host);
+  var LB_SWITCH = /"(hideAds|hideAdsInContent|show\w*Ads?)"\s*:\s*(true|false)/;
+
   var body = $response && $response.body;
   if (typeof body !== 'string' || body.length < 2) return pass('empty/binary body');
+  if (IS_LB && !LB_SWITCH.test(body)) return pass('Letterboxd: no ad switches');
   var c0 = body.replace(/^\s+/, '').charAt(0);
   if (c0 !== '{' && c0 !== '[') {
     var rsh = $response.headers || {}, ctype = '';
@@ -227,6 +238,23 @@
 
   var data;
   try { data = JSON.parse(protectBig(body)); } catch (e) { return pass('json parse error'); }
+
+  if (IS_LB) {
+    var lbAt = [];
+    (function lbWalk(o, p, depth) {
+      if (!o || typeof o !== 'object' || depth > 10) return;
+      if (Array.isArray(o)) { for (var i = 0; i < o.length; i++) lbWalk(o[i], p + '[]', depth + 1); return; }
+      for (var k in o) {
+        var v = o[k];
+        if ((k === 'hideAds' || k === 'hideAdsInContent') && v === false) { o[k] = true; lbAt.push(p + '.' + k); }
+        else if (/^show\w*Ads?$/.test(k) && v === true) { o[k] = false; lbAt.push(p + '.' + k); }
+        else if (v && typeof v === 'object') lbWalk(v, p + '.' + k, depth + 1);
+      }
+    })(data, '', 0);
+    if (DEBUG) log('Letterboxd: ' + (lbAt.length ? 'switched ' + lbAt.slice(0, 10).join(',') + (lbAt.length > 10 ? ' …' + lbAt.length : '') : 'nothing to switch'));
+    if (!lbAt.length) return $done({});
+    return $done({ body: restoreBig(JSON.stringify(data)) });
+  }
 
   // DDX Fitness: сторис (если ответ дошёл сюда, а не через повтор в фазе запроса) — см. ddxStories
   if (IS_DDX_STORIES) {
