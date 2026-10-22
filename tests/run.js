@@ -475,6 +475,18 @@ group('2. Avito: реклама под объявлением; AliExpress: ст�
 t('V1 места для рекламы в карточке объявления -> пустые', { url: 'https://app.avito.ru/api/2/items/8356689486/banners',
   body: { success: { positions: { item_btf_ios: [{ avito: { bannerCode: 'item_btf_ios', params: { advRequestId: 'x' } } }] }, analyticParams: { banner_pagetype: 'item' } } } },
   (p) => { eq(p, { success: { positions: { item_btf_ios: [] }, analyticParams: { banner_pagetype: 'item' } } }); });
+t('V3 корзина: поле bundle у продавца убирается, шаблоны и товары — как есть', { url: 'https://app.avito.ru/api/3/cart/items',
+  body: { result: { components: { BundleBlockV2: { params: { bundle: { text: '{{params.sellerData.bundle.text}}' } } } },
+    data: { sellers: [{ sellerId: 's1', name: 'Worldwide Union', bundle: { text: 'Добавьте ещё 2 товара до скидки 7%', items: [{ id: 1 }] }, items: [{ id: 9, price: '3 990 ₽' }] }] } }, status: 'ok' } },
+  (p) => {
+    eq(p.result.data.sellers[0], { sellerId: 's1', name: 'Worldwide Union', items: [{ id: 9, price: '3 990 ₽' }] });
+    eq(p.result.components.BundleBlockV2.params.bundle, { text: '{{params.sellerData.bundle.text}}' }); eq(p.status, 'ok');
+  });
+t('V4 корзина без скидок продавца — как есть', { url: 'https://app.avito.ru/api/3/cart/items', body: { result: { data: { sellers: [{ sellerId: 's1', items: [] }] } } } },
+  (p, out, r) => { eq(r.result, {}); });
+t('C1 СДЭК: сторис на главной -> пустой список', { url: 'https://my.cdek.ru/api/stories',
+  body: [{ id: 1, title: 'График работы СДЭК в праздники', slides: [{ mediaUrl: 'https://public-static.cdek.ru/mobile-stories/a.jpg' }] }, { id: 2, title: 'Включите пуши о заказах', slides: [] }] },
+  (p) => { eq(p, []); });
 t('V2 мест для рекламы нет — как есть', { url: 'https://app.avito.ru/api/2/items/1/banners', body: { success: { positions: {} } } },
   (p, out, r) => { eq(r.result, {}); });
 const W = (name, data) => ({ uuid: 'u-' + name, name: name, vertical: 'order', version: 1, state: { data: data || {} }, props: {}, staticProps: {} });

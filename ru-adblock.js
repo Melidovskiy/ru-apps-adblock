@@ -1,5 +1,5 @@
 /*
- * RU Apps AdBlock v3.28 — фильтр ответов для Shadowrocket (type=http-response, requires-body=true)
+ * RU Apps AdBlock v3.29 — фильтр ответов для Shadowrocket (type=http-response, requires-body=true)
  * Ozon / Wildberries / Яндекс Маркет / Яндекс Go / Яндекс Еда / Avito / СДЭК / Почта России / AliExpress / DDX Fitness / 2GIS /
  * Letterboxd
  *
@@ -106,6 +106,9 @@
  *       ресторанами (блоки madv_* в layout-constructor/…/layout).
  * v3.28: AliExpress, «Комбо» — карусель «Выгодный момент!» (виджет HomepageProfitBannerCommon с товарами); Яндекс Еда,
  *       «Заказы и бронирования» — рекламная карусель (communications_block в orders-info/…/orders).
+ * v3.29: Avito, корзина — блок «Добавьте ещё N товара до скидки N%» (поле bundle у продавца в cart/items). СДЭК,
+ *       главная — карусель сторис (api/stories -> пустой список; рекламные слайды в них общий поиск и раньше убирал,
+ *       но оставались пустые сторис).
  *
  * Страховки: тело не меняется, если ничего не найдено; подъём вверх не выше блока в 20% ответа;
  * один удаляемый элемент не больше 40% ответа; если суммарно удаляется больше 60% — ответ как есть.
@@ -261,6 +264,33 @@
 
   var data;
   try { data = JSON.parse(protectBig(body)); } catch (e) { return pass('json parse error'); }
+
+  // Avito, корзина (cart/items: шаблоны экрана и данные): блок «Добавьте ещё N товара до скидки N%» под товарами продавца
+  // (скидка продавца за несколько товаров) — компонент BundleBlockV2, который рисуется, пока в данных продавца есть поле
+  // bundle. Поле bundle в данных -> убирается; шаблоны (components/functions), товары и кнопки — как есть.
+  if (/(^|\.)avito\.ru$/.test(host) && /^\/api\/\d+\/cart\/items/.test(path) && data && typeof data === 'object') {
+    var cbGone = [];
+    (function bw(o, p, depth) {
+      if (!o || typeof o !== 'object' || depth > 30) return;
+      if (Array.isArray(o)) { for (var i = 0; i < o.length; i++) bw(o[i], p + '[' + i + ']', depth + 1); return; }
+      for (var k in o) {
+        var v = o[k];
+        if (k === 'bundle' && v && typeof v === 'object' && !/\.(components|functions)(\.|$)/.test(p)) { cbGone.push(p + '.bundle'); delete o[k]; continue; }
+        if (v && typeof v === 'object') bw(v, p + '.' + k, depth + 1);
+      }
+    })(data, '', 0);
+    if (DEBUG) log('Avito cart: removed ' + (cbGone.slice(0, 8).join(', ') || 'nothing') + (cbGone.length > 8 ? ' …' + cbGone.length : ''));
+    if (!cbGone.length) return $done({});
+    return $done({ body: restoreBig(JSON.stringify(data)) });
+  }
+
+  // СДЭК, главная: карусель сторис (my.cdek.ru/api/stories — список: новости, «Включите пуши», реклама с erid) -> пустой.
+  // Если убирать только рекламные слайды, остаются пустые сторис.
+  if (/(^|\.)cdek\.ru$/.test(host) && /^\/api\/stories\/?$/.test(path) && Array.isArray(data)) {
+    if (DEBUG) log('CDEK stories: ' + (data.length ? 'emptied [' + data.length + ']' : 'nothing'));
+    if (!data.length) return $done({});
+    return $done({ body: '[]' });
+  }
 
   // Яндекс Еда, «Заказы и бронирования» (orders-info/v1/orders): рекламная карусель над списком — communications_block
   // (тот же блок madv_hero_banners, что на главной, баннеры с данными рекламодателя) -> убирается; заказы — как есть
