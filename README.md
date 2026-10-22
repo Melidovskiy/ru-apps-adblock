@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Сайт](https://img.shields.io/badge/сайт-melidovskiy.github.io-111)](https://melidovskiy.github.io/ru-apps-adblock/)
 
-Модуль и скрипт для [Shadowrocket](https://apps.apple.com/app/shadowrocket/id932747118) (iOS), которые убирают рекламу и навязчивые рекомендации из популярных российских приложений и Letterboxd: Ozon, Wildberries, Яндекс Маркета, Яндекс Go, Яндекс Еды, Avito, СДЭК, Почты России, AliExpress, DDX Fitness, 2GIS и Letterboxd.
+Модуль и скрипт для [Shadowrocket](https://apps.apple.com/app/shadowrocket/id932747118) (iOS), которые убирают рекламу и навязчивые рекомендации из популярных российских приложений и Letterboxd: Ozon, Wildberries, Яндекс Маркет, Яндекс Go, Яндекс Еда, Avito, СДЭК, Почта России, AliExpress, DDX Fitness, 2GIS и Letterboxd.
 
 Вся обработка идёт **на вашем телефоне**: скрипт получает ответ сервера приложения, вырезает из него рекламный блок и отдаёт приложению остальное. Никуда, кроме серверов самих приложений, данные не отправляются.
 
