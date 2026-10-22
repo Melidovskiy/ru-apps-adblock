@@ -1,5 +1,5 @@
 /*
- * RU Apps AdBlock v3.27 — фильтр ответов для Shadowrocket (type=http-response, requires-body=true)
+ * RU Apps AdBlock v3.28 — фильтр ответов для Shadowrocket (type=http-response, requires-body=true)
  * Ozon / Wildberries / Яндекс Маркет / Яндекс Go / Яндекс Еда / Avito / СДЭК / Почта России / AliExpress / DDX Fitness / 2GIS /
  * Letterboxd
  *
@@ -104,6 +104,8 @@
  *       профиле, окно-предложение DDX Action и баннеры в чате: переключатели в service/mobile_config -> выключены.
  *       Яндекс Еда, главная: окно с рекламой при запуске, карусель баннеров «Advertisement» и рекламные баннеры между
  *       ресторанами (блоки madv_* в layout-constructor/…/layout).
+ * v3.28: AliExpress, «Комбо» — карусель «Выгодный момент!» (виджет HomepageProfitBannerCommon с товарами); Яндекс Еда,
+ *       «Заказы и бронирования» — рекламная карусель (communications_block в orders-info/…/orders).
  *
  * Страховки: тело не меняется, если ничего не найдено; подъём вверх не выше блока в 20% ответа;
  * один удаляемый элемент не больше 40% ответа; если суммарно удаляется больше 60% — ответ как есть.
@@ -259,6 +261,33 @@
 
   var data;
   try { data = JSON.parse(protectBig(body)); } catch (e) { return pass('json parse error'); }
+
+  // Яндекс Еда, «Заказы и бронирования» (orders-info/v1/orders): рекламная карусель над списком — communications_block
+  // (тот же блок madv_hero_banners, что на главной, баннеры с данными рекламодателя) -> убирается; заказы — как есть
+  if (/^eda\.yandex\.ru$/.test(host) && /^\/eats\/v\d+\/orders-info\/v\d+\/orders$/.test(path) && data && data.communications_block) {
+    if (DEBUG) log('Yandex Eats orders: removed communications_block (' + String(data.communications_block.type || '?') + ')');
+    delete data.communications_block;
+    return $done({ body: restoreBig(JSON.stringify(data)) });
+  }
+
+  // AliExpress, «Комбо» (mobile-layout/choice): карусель «Выгодный момент!» — виджет HomepageProfitBannerCommon с товарами
+  // (state.data.data.snippets[]); почти вся страница по размеру, поэтому общее правило по заголовку её не берёт. Пустые
+  // заготовки с тем же именем в ленте вкладок (snippets пуст), вкладки и лента не трогаются.
+  if (/(^|\.)aliexpress\.ru$/.test(host) && /^\/mobile-layout\/choice$/.test(path) && data && data.layout &&
+      Array.isArray(data.layout.widgetInstances)) {
+    var aeCg = [];
+    (function cw(list, depth) {
+      if (!Array.isArray(list) || depth > 6) return;
+      for (var ci = list.length - 1; ci >= 0; ci--) {
+        var w = list[ci], sd = w && w.state && w.state.data;
+        var sn = sd && ((sd.data && sd.data.snippets) || sd.snippets);
+        if (w && w.name === 'HomepageProfitBannerCommon' && Array.isArray(sn) && sn.length) { aeCg.push(w.name + '(' + sn.length + ')'); list.splice(ci, 1); continue; }
+        if (w) cw(w.children, depth + 1);
+      }
+    })(data.layout.widgetInstances, 0);
+    if (DEBUG) log('AE Combo: removed ' + (aeCg.join(',') || 'nothing'));
+    if (aeCg.length) return $done({ body: restoreBig(JSON.stringify(data)) });
+  }
 
   // Яндекс Еда, главная (eda.yandex.ru/eats/v1/layout-constructor/v1/layout — вся главная одним ответом: data.<тип блока>[]
   // и порядок блоков в layout[]). Реклама — блоки data.madv_* (madv_hero_banners — карусель баннеров «Advertisement» и

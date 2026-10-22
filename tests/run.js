@@ -105,11 +105,11 @@ tx('M7 маршрутизация адресов: что идёт в скрип�
     'https://finance.wb.ru/api/offers-api/v1/product/offers', 'https://mobileapi.ddxfitness.ru/stories?x=1', 'https://tc.mobile.yandex.net/4.0/urbanads/sdk?',
     'https://stories.api.2gis.ru/3.0/stories?locale=ru_RU', 'https://tips-api.2giskz.app/api/1.0/tips?x=1', 'https://advisor.api.2gis.ru/api/3.0/ads/advise/gta?x',
     'https://api.letterboxd.com/api/v0/me', 'https://api.letterboxd.com/api/v0/me/account-status?x=1',
-    'https://eda.yandex.ru/eats/v1/layout-constructor/v1/layout?x=1'];
+    'https://eda.yandex.ru/eats/v1/layout-constructor/v1/layout?x=1', 'https://eda.yandex.ru/eats/v1/orders-info/v1/orders?limit=10'];
   const notScript = ['https://mobileapi.ddxfitness.ru/v2/employees/positions?x', 'https://api.finance.ozon.ru/mobile/obank/features', 'https://www.gosuslugi.ru/',
     'https://advisor.api.2gis.ru/api/3.0/ads/sync', 'https://reward-system.2gis.com/progress', 'https://social-graph.2gis.com/social-graph/users/friendship/list',
     'https://stories.api.2gis.ru/3.0/stories/viewed', 'https://s.ltrbxd.com/static/img/x.png', 'https://letterboxd.com/film/x/',
-    'https://eda.yandex.ru/eats/v1/launch/v2/native', 'https://eda.yandex.ru/eats/v1/orders-info/v1/orders'];
+    'https://eda.yandex.ru/eats/v1/launch/v2/native', 'https://eda.yandex.ru/eats/v1/orders-info/v1/details'];
   inScript.forEach((u) => { if (!pat.test(u)) throw new Error('не идёт в скрипт: ' + u); });
   notScript.forEach((u) => { if (pat.test(u)) throw new Error('лишний в скрипте: ' + u); });
   if (!rw.some((re) => re.test('https://mobileapi.ddxfitness.ru/mobile_banners?request_source=mobile_app'))) throw new Error('баннеры DDX не отклоняются');
@@ -487,6 +487,17 @@ const order = { alias: 'order-details', layout: { widgetInstances: [{ uuid: 'roo
   W('RecommendationList', { data: { title: 'Подобрали для вас' } })] }] } };
 t('A-O1 страница заказа: «Одна цена» и «Подобрали для вас» убираются, заказ — как есть', { url: 'https://wapi.aliexpress.ru/mobile-layout/order-details-redesign23', body: order },
   (p) => { eq(p.layout.widgetInstances[0].children.map((w) => w.name), ['OrderDetailsInformerV2', 'OrderDetailsProductsSummary', 'OrderDetailsActionsV2']); });
+const Wc = (name, data, children) => Object.assign({ uuid: 'u-' + name + '-' + (children ? children.length : 0), name: name, vertical: 'choice', version: 1, state: { data: data || {} } }, children ? { children: children } : {});
+const combo = { alias: 'choice', layout: { widgetInstances: [Wc('ChoiceMainScreen', {}, [Wc('ChoiceMainScrollableContentV2', {}, [
+  Wc('ChoiceMainHeaderContainer', {}, [Wc('ChoiceMainHeader', { infoBlocks: [] }), Wc('ChoiceMainSearch', {})]),
+  Wc('HomepageProfitBannerCommon', { content: [{ title: 'Выгодный момент!' }], data: { snippets: snip(19) } }),
+  Wc('UniversalTabs', { tabs: [{ id: 't1' }] }, [Wc('TabsRecommendationContext', {}, [Wc('SearchResultList', {}, [Wc('HomepageProfitBannerCommon', { data: { snippets: [] } })])])])])])] } };
+t('A-C1 «Комбо»: карусель «Выгодный момент!» убирается, вкладки и лента — как есть', { url: 'https://wapi.aliexpress.ru/mobile-layout/choice', body: combo },
+  (p) => {
+    const sc = p.layout.widgetInstances[0].children[0].children;
+    eq(sc.map((w) => w.name), ['ChoiceMainHeaderContainer', 'UniversalTabs']);
+    eq(sc[1].children[0].children[0].children[0].name, 'HomepageProfitBannerCommon');
+  });
 t('A-O2 лента «Подобрали для вас» под заказом -> пустая', { url: 'https://wapi.aliexpress.ru/aer-jsonapi/bx/mobile/recommend/order-recommend',
   body: { data: { items: [{ rowV2: { items: [{ productId: 1 }, { productId: 2 }] } }], trace: 't' } } },
   (p) => { eq(p.data.items, []); eq(p.data.trace, 't'); });
@@ -507,6 +518,10 @@ t('E1 главная: блоки madv_* и баннеры с ord убирают�
   eq(p.data.banners_carousel[0].payload.banners, [{ title: 'Скидки дня' }]); eq(p.data.places_v2_lists, home.data.places_v2_lists);
   eq(p.layout.map((x) => x.id), ['t', 'pl', 'bc']); eq(p.currency, { code: 'RUB' });
 });
+t('E3 «Заказы»: рекламная карусель (communications_block) убирается, заказы как есть', { url: 'https://eda.yandex.ru/eats/v1/orders-info/v1/orders',
+  body: { pagination_settings: { limit: 10 }, orders: [{ id: 'o1', widgets: { general: { name: 'Вкусно – и точка' } } }],
+    communications_block: { type: 'madv_hero_banners', payload: { banners: [{ meta: { ord: { name: 'АО «Хелеон Рус»' } } }] } } } },
+  (p) => { eq(p, { pagination_settings: { limit: 10 }, orders: [{ id: 'o1', widgets: { general: { name: 'Вкусно – и точка' } } }] }); });
 t('E2 главная без рекламы — как есть', { url: EATS, body: { data: { places_v2_lists: [{ id: 'pl', payload: { places: [] } }] }, layout: [{ id: 'pl', type: 'places_v2_list' }] } },
   (p, out, r) => { eq(r.result, {}); });
 }
