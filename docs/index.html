@@ -1,7 +1,7 @@
 <!doctype html>
 <!--
   The project's website, served by GitHub Pages from this docs/ folder (Settings → Pages → Deploy from a branch → main, /docs).
-  One page in Russian and English: the language follows the browser until chosen with the RU / EN switch.
+  One page, in Russian.
   The phone in the comparison is a drawing of a generic shopping app, not a screenshot of any real one.
 -->
 <html lang="ru">
@@ -22,6 +22,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;800&display=swap" rel="stylesheet">
 <style>
   :root {
+    --surface: linear-gradient(180deg, #19191c 0%, #101012 100%);
+    --lift: inset 0 1px 0 rgba(255,255,255,.07), 0 1px 2px rgba(0,0,0,.6), 0 22px 44px -22px rgba(0,0,0,.95);
+    --lift-hover: inset 0 1px 0 rgba(255,255,255,.1), 0 2px 4px rgba(0,0,0,.6), 0 30px 60px -24px rgba(0,0,0,1);
     --bg: #000; --card: #111113; --card2: #18181b;
     --line: rgba(255,255,255,.08); --line2: rgba(255,255,255,.14);
     --text: #f5f5f7; --dim: #a1a1a6; --dim2: #6e6e73;
@@ -35,18 +38,16 @@
   a { color: inherit; text-decoration: none; }
   img { display: block; max-width: 100%; }
   .wrap { max-width: var(--max); margin: 0 auto; padding: 0 var(--pad); }
-  [data-lang="ru"] .en, [data-lang="en"] .ru { display: none !important; }
 
   nav { position: sticky; top: 0; z-index: 20; backdrop-filter: saturate(160%) blur(18px); -webkit-backdrop-filter: saturate(160%) blur(18px);
         background: rgba(0,0,0,.66); border-bottom: 1px solid var(--line); }
-  nav .wrap { display: flex; align-items: center; gap: 28px; height: 56px; }
-  .logo { display: flex; align-items: center; gap: 10px; font: 800 18px/1 'JetBrains Mono', monospace; letter-spacing: -.02em; white-space: nowrap; }
-  .logo svg { width: 22px; height: 22px; }
+  nav .wrap { display: flex; align-items: center; gap: 28px; height: 64px; }
+  .logo { display: flex; align-items: center; gap: 12px; font: 650 20px/1 'Inter', sans-serif; letter-spacing: -.025em; white-space: nowrap; }
+  .logo .ic { flex: none; width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center;
+              background: linear-gradient(155deg, #ffffff 0%, #d9d9de 100%); box-shadow: inset 0 -1px 0 rgba(0,0,0,.15), 0 6px 18px rgba(255,255,255,.08); }
+  .logo .ic svg { width: 20px; height: 20px; }
   nav .links { display: flex; gap: 24px; margin-left: auto; font-size: 14px; color: var(--dim); }
   nav .links a:hover { color: var(--text); }
-  .lang { display: flex; border: 1px solid var(--line2); border-radius: 999px; padding: 2px; font-size: 12px; font-weight: 600; }
-  .lang button { font: inherit; color: var(--dim); background: none; border: 0; padding: 4px 10px; border-radius: 999px; cursor: pointer; }
-  .lang button.on { background: var(--text); color: #000; }
 
   header { padding: 88px 0 24px; position: relative; }
   header::before { content: ''; position: absolute; inset: -120px 0 auto; height: 640px; pointer-events: none; z-index: -1;
@@ -57,6 +58,13 @@
   .eyebrow i { width: 6px; height: 6px; border-radius: 50%; background: #30d158; box-shadow: 0 0 0 4px rgba(48,209,88,.15); }
   h1 { font-size: clamp(40px, 5.4vw, 64px); line-height: 1.02; letter-spacing: -.045em; font-weight: 700; }
   h1 .dim { color: var(--dim2); }
+  /* the phrases share one cell, so the heading keeps the height of the tallest */
+  .rot { display: grid; }
+  .rot .ph { grid-area: 1 / 1; opacity: 0; transform: translateY(14px); filter: blur(6px);
+             transition: opacity .5s var(--ease), transform .5s var(--ease), filter .5s var(--ease); }
+  .rot .ph.out { transition-duration: .35s; }
+  .rot .ph.on { opacity: 1; transform: none; filter: none; }
+  .rot .ph.out { opacity: 0; transform: translateY(-14px); filter: blur(6px); }
   .lead { font-size: clamp(18px, 2vw, 21px); color: var(--dim); max-width: 520px; margin-top: 22px; line-height: 1.45; }
   .cta { display: flex; gap: 12px; margin-top: 32px; flex-wrap: wrap; }
   .btn { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-size: 16px; padding: 13px 22px; border-radius: 999px;
@@ -71,12 +79,20 @@
 
   /* Phone with the before/after slider */
   .phone-box { display: flex; flex-direction: column; align-items: center; }
-  .phone { position: relative; width: min(340px, 82vw); padding: 11px; border-radius: 54px; background: #0c0c0d; border: 1px solid var(--line2);
-           box-shadow: 0 40px 120px rgba(255,255,255,.07), 0 30px 80px rgba(0,0,0,.85), inset 0 0 0 2px #1d1d20; }
+  .phone { position: relative; width: min(340px, 82vw); padding: 12px; border-radius: 58px;
+           background: linear-gradient(145deg, #5b5b61 0%, #26262a 22%, #0e0e10 50%, #2a2a2e 78%, #6a6a70 100%);
+           box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.22), inset 0 0 0 8px #050506,
+                       0 60px 120px -30px rgba(0,0,0,.95), 0 0 140px rgba(255,255,255,.07); }
+  .phone::before, .phone::after { content: ''; position: absolute; width: 4px; border-radius: 2px;
+                                  background: linear-gradient(90deg, #6a6a70, #2a2a2e); }
+  .phone::before { right: -3px; top: 27%; height: 13%; }                          /* side button */
+  .phone::after { left: -3px; top: 21%; height: 7%; box-shadow: 0 calc(min(340px, 82vw) * .2) 0 #3a3a3f; }   /* volume buttons */
   .compare { position: relative; aspect-ratio: 9 / 19.5; border-radius: 44px; overflow: hidden; cursor: ew-resize; touch-action: pan-y;
              user-select: none; -webkit-user-select: none; --x: 50%; outline: none; text-align: left; }
   .compare .side { position: absolute; inset: 0; }
   .compare .before { clip-path: inset(0 calc(100% - var(--x)) 0 0); }
+  .compare::after { content: ''; position: absolute; inset: 0; z-index: 7; pointer-events: none; border-radius: inherit;
+                    background: linear-gradient(118deg, rgba(255,255,255,.16) 0%, rgba(255,255,255,0) 34%); }
   .island { position: absolute; z-index: 4; top: 11px; left: 50%; width: 31%; height: 3.6%; transform: translateX(-50%); background: #000; border-radius: 999px; }
   .divider { position: absolute; z-index: 5; top: 0; bottom: 0; left: var(--x); width: 2px; margin-left: -1px; background: rgba(255,255,255,.92);
              box-shadow: 0 0 18px rgba(0,0,0,.5); pointer-events: none; }
@@ -112,14 +128,24 @@
   .app h5 { font-size: 1.15em; margin: 1.3em 0 .7em; display: flex; align-items: center; gap: .5em; }
   .app h5 .ad { background: #ffd60a; color: #3a2f00; }
   .app .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: .8em; }
-  .card { background: #fff; border-radius: 1.2em; padding: .55em; position: relative; }
+  .card { background: #fff; border-radius: 1.2em; padding: .55em; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,.05), 0 .8em 1.6em -1em rgba(0,0,0,.22); }
   .card .ph { height: 7.4em; border-radius: .8em; background: linear-gradient(135deg, #e5e5ea, #d1d1d6); }
   .card .p { height: .9em; width: 55%; border-radius: .5em; background: #1c1c1e; margin-top: .7em; }
   .card .t { height: .7em; width: 85%; border-radius: .5em; background: #d1d1d6; margin-top: .45em; }
   .card .t2 { width: 60%; }
   .card .ad { position: absolute; top: .9em; left: .9em; }
-  .card.promo .ph { background: linear-gradient(135deg, #64d2ff, #5e5ce6); }
-  .card.promo2 .ph { background: linear-gradient(135deg, #ffd60a, #ff9f0a); }
+  .card .ph { position: relative; overflow: hidden; }
+  .card .ph::after { content: ''; position: absolute; left: 50%; top: 52%; width: 46%; height: 58%; transform: translate(-50%, -50%);
+                     border-radius: 38% 38% 30% 30%; background: rgba(255,255,255,.55); box-shadow: 0 .6em 1em -.4em rgba(0,0,0,.18); }
+  .grid2 .card:nth-child(6n+1) .ph { background: linear-gradient(135deg, #ffe3c8, #ffb199); }
+  .grid2 .card:nth-child(6n+2) .ph { background: linear-gradient(135deg, #d8f6e5, #84d8b0); }
+  .grid2 .card:nth-child(6n+3) .ph { background: linear-gradient(135deg, #e1e6ff, #98abff); }
+  .grid2 .card:nth-child(6n+4) .ph { background: linear-gradient(135deg, #fff4c7, #ffcf5c); }
+  .grid2 .card:nth-child(6n+5) .ph { background: linear-gradient(135deg, #f5ddff, #c597ff); }
+  .grid2 .card:nth-child(6n+6) .ph { background: linear-gradient(135deg, #d6f2ff, #74c2ff); }
+  .grid2 .card.promo .ph { background: linear-gradient(135deg, #ff375f, #bf5af2); }
+  .grid2 .card.promo2 .ph { background: linear-gradient(135deg, #ff9f0a, #ff453a); }
+  .card.promo .ph::after, .card.promo2 .ph::after { background: rgba(255,255,255,.35); }
   .tabbar { position: absolute; left: 0; right: 0; bottom: 0; height: 5.6em; background: rgba(255,255,255,.92); border-top: 1px solid #e5e5ea;
             display: flex; justify-content: space-around; padding-top: .9em; }
   .tabbar i { width: 1.6em; height: 1.6em; border-radius: .5em; background: #c7c7cc; }
@@ -133,26 +159,32 @@
   h2 .dim { color: var(--dim2); }
   .sub { color: var(--dim); font-size: 19px; max-width: 660px; margin-top: 16px; }
   .apps { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-top: 44px; }
-  .appc { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 22px 24px; display: grid; grid-template-columns: 44px 1fr; gap: 16px;
-          transition: border-color .3s, transform .4s var(--ease); }
-  .appc:hover { border-color: var(--line2); transform: translateY(-2px); }
-  .mono { width: 44px; height: 44px; border-radius: 12px; background: var(--card2); border: 1px solid var(--line2); display: grid; place-items: center;
-          font-weight: 700; font-size: 17px; color: var(--text); letter-spacing: -.02em; }
-  .mono.s { font-size: 13px; }
-  .appc h3 { font-size: 17px; font-weight: 600; letter-spacing: -.01em; }
+  .appc { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 22px 24px; display: grid;
+          grid-template-columns: 48px 1fr; gap: 16px; box-shadow: var(--lift);
+          transition: border-color .3s, transform .4s var(--ease), box-shadow .4s var(--ease); }
+  .appc:hover { border-color: var(--line2); transform: translateY(-3px); box-shadow: var(--lift-hover); }
+  .ico { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; color: var(--fg, #fff);
+         background: linear-gradient(160deg, var(--c1) 0%, var(--c2) 100%);
+         box-shadow: inset 0 1px 0 rgba(255,255,255,.35), inset 0 -1px 0 rgba(0,0,0,.18), 0 8px 18px -8px var(--c2); }
+  .ico svg { width: 25px; height: 25px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+  .appc .tl { color: var(--text); font-size: 15.5px; font-weight: 600; margin-top: 6px; letter-spacing: -.01em; }
+  .appc h3 { font-size: 13px; font-weight: 600; letter-spacing: .02em; color: var(--dim); text-transform: none; }
   .appc p { color: var(--dim); font-size: 14.5px; margin-top: 4px; line-height: 1.5; }
   .plus { margin-top: 14px; color: var(--dim); font-size: 15px; }
 
   .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 44px; }
-  .feat { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 26px; }
-  .feat svg { width: 28px; height: 28px; stroke: var(--text); fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  .feat { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 26px; box-shadow: var(--lift);
+          transition: transform .4s var(--ease), box-shadow .4s var(--ease), border-color .3s; }
+  .feat:hover { transform: translateY(-3px); box-shadow: var(--lift-hover); border-color: var(--line2); }
+  .feat .ico { width: 46px; height: 46px; border-radius: 13px; }
+  .feat .ico svg { width: 24px; height: 24px; }
   .feat h3 { font-size: 18px; font-weight: 600; margin-top: 16px; letter-spacing: -.01em; }
   .feat p { color: var(--dim); font-size: 15px; margin-top: 8px; }
 
   .steps { counter-reset: s; margin-top: 44px; display: grid; gap: 14px; }
-  .step { display: grid; grid-template-columns: 52px 1fr; gap: 18px; background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 24px; }
+  .step { display: grid; grid-template-columns: 52px 1fr; gap: 18px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 24px; box-shadow: var(--lift); }
   .step::before { counter-increment: s; content: counter(s); width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line2);
-                  display: grid; place-items: center; font-weight: 600; font-size: 15px; color: var(--dim); }
+                  display: grid; place-items: center; font-weight: 600; font-size: 15px; color: var(--text); background: linear-gradient(160deg, #2a2a2e, #161618); box-shadow: inset 0 1px 0 rgba(255,255,255,.12); }
   .step h3 { font-size: 18px; font-weight: 600; letter-spacing: -.01em; }
   .step p, .step li { color: var(--dim); font-size: 15px; }
   .step p { margin-top: 6px; }
@@ -193,7 +225,6 @@
   @media (max-width: 640px) {
     :root { --pad: 16px; }
     nav .links { display: none; }
-    .lang { margin-left: auto; }
     header { padding-top: 56px; }
     .apps, .grid3, .limits { grid-template-columns: 1fr; }
     .step { grid-template-columns: 1fr; gap: 12px; padding: 20px; }
@@ -203,39 +234,38 @@
   }
 </style>
 </head>
-<body data-lang="ru">
+<body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <symbol id="gh" viewBox="0 0 24 24"><path fill="currentColor" d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.33-1.28-1.69-1.28-1.69-1.05-.71.08-.7.08-.7 1.16.08 1.77 1.2 1.77 1.2 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.78 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.42-2.7 5.4-5.26 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5z"/></symbol>
-  <symbol id="logo" viewBox="0 0 24 24"><path d="M12 2.5l7.5 3v6c0 4.9-3.2 8.7-7.5 10.5-4.3-1.8-7.5-5.6-7.5-10.5v-6z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M8.5 9l7 7M15.5 9l-7 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  <symbol id="logo" viewBox="0 0 24 24"><path d="M12 2.2l8 3.1v6.1c0 5-3.4 9-8 10.8-4.6-1.8-8-5.8-8-10.8V5.3z" fill="#0b0b0c"/><path d="M8.2 12.1l2.6 2.6 5-5.2" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
 </svg>
 
 <nav>
   <div class="wrap">
-    <a class="logo" href="#top"><svg><use href="#logo"/></svg>RU Apps AdBlock</a>
+    <a class="logo" href="#top"><span class="ic"><svg><use href="#logo"/></svg></span>RU Apps AdBlock</a>
     <div class="links">
-      <a href="#apps"><span class="ru">Приложения</span><span class="en">Apps</span></a>
-      <a href="#how"><span class="ru">Как работает</span><span class="en">How it works</span></a>
-      <a href="#install"><span class="ru">Установка</span><span class="en">Install</span></a>
+      <a href="#apps">Приложения</a>
+      <a href="#how">Как работает</a>
+      <a href="#install">Установка</a>
       <a href="https://github.com/Melidovskiy/ru-apps-adblock">GitHub</a>
     </div>
-    <div class="lang" role="group" aria-label="Language"><button data-set="ru">RU</button><button data-set="en">EN</button></div>
   </div>
 </nav>
 
 <header id="top">
   <div class="wrap hero">
     <div>
-      <div class="eyebrow rv"><i></i><span class="ru">Модуль для Shadowrocket · iPhone</span><span class="en">A Shadowrocket module · iPhone</span></div>
-      <h1 class="rv"><span class="ru">Покупки.<br><span class="dim">Без рекламы.</span></span><span class="en">Shopping.<br><span class="dim">Without the ads.</span></span></h1>
+      <div class="eyebrow rv"><i></i>Модуль для Shadowrocket · iPhone</div>
+      <h1 class="rv rot" id="rot"><span class="ph on">Покупки.<br><span class="dim">Без рекламы.</span></span><span class="ph" aria-hidden="true">Тренировки.<br><span class="dim">Без лишнего.</span></span><span class="ph" aria-hidden="true">Дорога домой.<br><span class="dim">Без отвлечений.</span></span><span class="ph" aria-hidden="true">Посылки.<br><span class="dim">Только посылки.</span></span></h1>
       <p class="lead rv">
-        <span class="ru">Убирает рекламу и навязчивые рекомендации из популярных российских приложений. Всё работает на вашем телефоне — данные никуда не уходят.</span>
-        <span class="en">Removes ads and pushy recommendations from popular Russian apps. Everything happens on your phone — your data goes nowhere else.</span>
+        Убирает рекламу и навязчивые рекомендации из популярных российских приложений. Всё работает на вашем телефоне — данные никуда не уходят.
+        
       </p>
       <div class="cta rv">
-        <a class="btn primary" href="#install"><span class="ru">Установить</span><span class="en">Install</span></a>
+        <a class="btn primary" href="#install">Установить</a>
         <a class="btn ghost" href="https://github.com/Melidovskiy/ru-apps-adblock"><svg><use href="#gh"/></svg>GitHub</a>
       </div>
-      <p class="apps-line rv">Ozon · Wildberries · <span class="ru">Яндекс Маркет · Яндекс Go</span><span class="en">Yandex Market · Yandex Go</span> · Avito · <span class="ru">СДЭК · Почта России</span><span class="en">CDEK · Russian Post</span> · AliExpress · DDX Fitness · 2GIS</p>
+      <p class="apps-line rv">Ozon · Wildberries · Яндекс Маркет · Яндекс Go · Avito · СДЭК · Почта России · AliExpress · DDX Fitness · 2GIS</p>
     </div>
 
     <div class="phone-box rv" id="phoneBox">
@@ -245,9 +275,9 @@
           <!-- after: clean -->
           <div class="side after" aria-hidden="true"><div class="app">
             <div class="top"><span>9:41</span><span>●●● ▮</span></div>
-            <div class="search"><i></i><span class="ru">Искать товары</span><span class="en">Search products</span></div>
-            <div class="chips"><span class="ru">Для вас</span><span class="en">For you</span><span class="ru">Одежда</span><span class="en">Clothing</span><span class="ru">Дом</span><span class="en">Home</span><span class="ru">Электроника</span><span class="en">Electronics</span></div>
-            <h5><span class="ru">Ваши заказы</span><span class="en">Your orders</span></h5>
+            <div class="search"><i></i>Искать товары</div>
+            <div class="chips"><span>Для вас</span><span>Одежда</span><span>Дом</span><span>Электроника</span></div>
+            <h5>Ваши заказы</h5>
             <div class="grid2">
               <div class="card"><div class="ph"></div><div class="p"></div><div class="t"></div><div class="t t2"></div></div>
               <div class="card"><div class="ph"></div><div class="p"></div><div class="t"></div><div class="t t2"></div></div>
@@ -263,73 +293,73 @@
           <!-- before: with ads -->
           <div class="side before" aria-hidden="true"><div class="app">
             <div class="top"><span>9:41</span><span>●●● ▮</span></div>
-            <div class="search"><i></i><span class="ru">Искать товары</span><span class="en">Search products</span></div>
-            <div class="chips"><span class="ru">Для вас</span><span class="en">For you</span><span class="ru">Одежда</span><span class="en">Clothing</span><span class="ru">Дом</span><span class="en">Home</span><span class="ru">Электроника</span><span class="en">Electronics</span></div>
-            <div class="banner"><span class="ad"><span class="ru">Реклама</span><span class="en">Ad</span></span>
-              <b><span class="ru">Скидки до −90%</span><span class="en">Up to 90% off</span></b><small><span class="ru">Только сегодня</span><span class="en">Today only</span></small></div>
+            <div class="search"><i></i>Искать товары</div>
+            <div class="chips"><span>Для вас</span><span>Одежда</span><span>Дом</span><span>Электроника</span></div>
+            <div class="banner"><span class="ad">Реклама</span>
+              <b>Скидки до −90%</b><small>Только сегодня</small></div>
             <div class="dots"><i></i><i></i><i></i><i></i></div>
-            <h5><span class="ru">Подобрали для вас</span><span class="en">Picked for you</span> <span class="ad">ADS</span></h5>
+            <h5>Подобрали для вас <span class="ad">ADS</span></h5>
             <div class="grid2">
-              <div class="card promo"><div class="ph"></div><span class="ad"><span class="ru">Реклама</span><span class="en">Ad</span></span><div class="p"></div><div class="t"></div><div class="t t2"></div></div>
+              <div class="card promo"><div class="ph"></div><span class="ad">Реклама</span><div class="p"></div><div class="t"></div><div class="t t2"></div></div>
               <div class="card"><div class="ph"></div><div class="p"></div><div class="t"></div><div class="t t2"></div></div>
               <div class="card"><div class="ph"></div><div class="p"></div><div class="t"></div><div class="t t2"></div></div>
-              <div class="card promo2"><div class="ph"></div><span class="ad"><span class="ru">Реклама</span><span class="en">Ad</span></span><div class="p"></div><div class="t"></div><div class="t t2"></div></div>
+              <div class="card promo2"><div class="ph"></div><span class="ad">Реклама</span><div class="p"></div><div class="t"></div><div class="t t2"></div></div>
               <div class="card"><div class="ph"></div><div class="p"></div><div class="t"></div><div class="t t2"></div></div>
-              <div class="card promo"><div class="ph"></div><span class="ad"><span class="ru">Реклама</span><span class="en">Ad</span></span><div class="p"></div><div class="t"></div><div class="t t2"></div></div>
+              <div class="card promo"><div class="ph"></div><span class="ad">Реклама</span><div class="p"></div><div class="t"></div><div class="t t2"></div></div>
             </div>
             <div class="tabbar"><i></i><i></i><i></i><i></i><i></i></div>
           </div></div>
-          <span class="tag l" id="tagL"><span class="ru">Без модуля</span><span class="en">Without</span></span>
-          <span class="tag r" id="tagR"><span class="ru">С модулем</span><span class="en">With module</span></span>
+          <span class="tag l" id="tagL">Без модуля</span>
+          <span class="tag r" id="tagR">С модулем</span>
           <div class="divider"></div>
           <div class="handle"><svg viewBox="0 0 24 24" fill="#111"><path d="M9.5 7 4.5 12l5 5zM14.5 7l5 5-5 5z"/></svg></div>
         </div>
       </div>
-      <p class="hint"><span class="ru">Потяните, чтобы сравнить · иллюстрация</span><span class="en">Drag to compare · illustration</span></p>
+      <p class="hint">Потяните, чтобы сравнить · иллюстрация</p>
     </div>
   </div>
 </header>
 
 <section id="apps">
   <div class="wrap">
-    <div class="kicker rv"><span class="ru">Приложения</span><span class="en">Apps</span></div>
-    <h2 class="rv"><span class="ru">Десять приложений.<br><span class="dim">Меньше шума в каждом.</span></span><span class="en">Ten apps.<br><span class="dim">Less noise in each.</span></span></h2>
-    <p class="sub rv"><span class="ru">Везде — карточки и баннеры с обязательной маркировкой рекламы (токен erid, пометка «Реклама»). А ещё — своё для каждого экрана:</span><span class="en">Everywhere: cards and banners with the legally required ad marking (the erid token, the «Реклама» label). And more, screen by screen:</span></p>
+    <div class="kicker rv">Приложения</div>
+    <h2 class="rv">Десять приложений.<br><span class="dim">Меньше шума в каждом.</span></h2>
+    <p class="sub rv">Везде — карточки и баннеры с обязательной маркировкой рекламы (токен erid, пометка «Реклама»). А ещё — своё для каждого экрана:</p>
     <div class="apps">
-      <div class="appc rv"><div class="mono">W</div><div><h3>Wildberries</h3><p><span class="ru">Баннеры и слайдеры, рекламная шапка главной, «Selected for you», рекомендации в «Мой WB», промо-карусель в WB Кошельке.</span><span class="en">Banners and sliders, the ad header on the home page, «Selected for you», recommendations in «My WB», the promo carousel in WB Wallet.</span></p></div></div>
-      <div class="appc rv"><div class="mono">O</div><div><h3>Ozon</h3><p><span class="ru">«Подобрали по вашим интересам», «Товары за 1 ₽» и промо-плашка в профиле; «Подобрали для вас» и «Вы смотрели» в избранном и корзине; баннер вкладки банка.</span><span class="en">«Picked for your interests», «Products for 1 ₽» and the promo strip in the profile; «Picked for you» and «You viewed» in favorites and cart; the bank tab banner.</span></p></div></div>
-      <div class="appc rv"><div class="mono"><span class="ru">Я</span><span class="en">Y</span></div><div><h3><span class="ru">Яндекс Маркет</span><span class="en">Yandex Market</span></h3><p><span class="ru">«Достойны сердечка» в избранном, «Может пригодиться» в корзине.</span><span class="en">«Worth a heart» in favorites, «Might come in handy» in the cart.</span></p></div></div>
-      <div class="appc rv"><div class="mono">Go</div><div><h3><span class="ru">Яндекс Go</span><span class="en">Yandex Go</span></h3><p><span class="ru">Лента плиток с товарами и ресторанами на главной, рекламный баннер на экране доставки.</span><span class="en">The tile feed of products and restaurants on the home screen, the ad banner on the delivery screen.</span></p></div></div>
-      <div class="appc rv"><div class="mono">A</div><div><h3>Avito</h3><p><span class="ru">«Похожие объявления» и рекламные места в избранном.</span><span class="en">«Similar listings» and ad slots in favorites.</span></p></div></div>
-      <div class="appc rv"><div class="mono"><span class="ru">С</span><span class="en">C</span></div><div><h3><span class="ru">СДЭК</span><span class="en">CDEK</span></h3><p><span class="ru">Блок «Реклама · Горячие предложения» на главной.</span><span class="en">The «Ad · Hot offers» block on the home screen.</span></p></div></div>
-      <div class="appc rv"><div class="mono"><span class="ru">П</span><span class="en">P</span></div><div><h3><span class="ru">Почта России</span><span class="en">Russian Post</span></h3><p><span class="ru">Карусель рекламных баннеров, места рекламы Яндекса, «Спецпредложения».</span><span class="en">The ad banner carousel, Yandex ad slots, «Special offers».</span></p></div></div>
-      <div class="appc rv"><div class="mono s">Ali</div><div><h3>AliExpress</h3><p><span class="ru">«Звёздные купоны» и витрины брендов на главной, рекламные товары в ленте «Для вас», «Товары от партнеров» и «Вы смотрели» в профиле и корзине.</span><span class="en">«Star coupons» and brand shelves on the home page, sponsored products in «For you», «Partner products» and «You viewed» in the profile and cart.</span></p></div></div>
-      <div class="appc rv"><div class="mono s">DDX</div><div><h3>DDX Fitness</h3><p><span class="ru">Карусель баннеров и сторис на главной.</span><span class="en">The banner carousel and stories on the home screen.</span></p></div></div>
-      <div class="appc rv"><div class="mono">2G</div><div><h3>2GIS</h3><p><span class="ru">Сторис, реклама в «Рекомендуем вам» и рекламный баннер на экране поиска; значок наград «+360 ★».</span><span class="en">Stories, ads in «Recommended for you» and the ad banner on the search screen; the «+360 ★» rewards badge.</span></p></div></div>
+      <div class="appc rv"><div class="ico" style="--c1:#d633b9;--c2:#6d1196"><svg viewBox="0 0 24 24"><path d="M6 8h12l-1.1 12H7.1z"/><path d="M9 8a3 3 0 0 1 6 0"/></svg></div><div><h3>Wildberries</h3><p class="tl">Покупайте то, что действительно нужно.</p><p>Баннеры и слайдеры, рекламная шапка главной, «Selected for you», рекомендации в «Мой WB», промо-карусель в WB Кошельке.</p></div></div>
+      <div class="appc rv"><div class="ico" style="--c1:#3d8bff;--c2:#0047e0"><svg viewBox="0 0 24 24"><circle cx="9.5" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/><path d="M3.5 4.5h2.4l2.2 11h10l1.9-7.5H7"/></svg></div><div><h3>Ozon</h3><p class="tl">Профиль и корзина — без чужих подборок.</p><p>«Подобрали по вашим интересам», «Товары за 1 ₽» и промо-плашка в профиле; «Подобрали для вас» и «Вы смотрели» в избранном и корзине; баннер вкладки банка.</p></div></div>
+      <div class="appc rv"><div class="ico" style="--c1:#ffdd4a;--c2:#ffb000;--fg:#1c1c1e"><svg viewBox="0 0 24 24"><path d="M4.5 10.5h15l-1.5 9h-12z"/><path d="M8.5 10.5L12 5l3.5 5.5"/></svg></div><div><h3>Яндекс Маркет</h3><p class="tl">Корзина без «может пригодиться».</p><p>«Достойны сердечка» в избранном, «Может пригодиться» в корзине.</p></div></div>
+      <div class="appc rv"><div class="ico" style="--c1:#36363b;--c2:#141416;--fg:#ffd21f"><svg viewBox="0 0 24 24"><path d="M5 15.5h14v-3l-1.9-4.5H6.9L5 12.5z"/><circle cx="8.2" cy="16.3" r="1.7"/><circle cx="15.8" cy="16.3" r="1.7"/></svg></div><div><h3>Яндекс Go</h3><p class="tl">Вызвать такси — и ничего не листать.</p><p>Лента плиток с товарами и ресторанами на главной, рекламный баннер на экране доставки.</p></div></div>
+      <div class="appc rv"><div class="ico" style="--c1:#2fbfff;--c2:#0a6cff"><svg viewBox="0 0 24 24"><path d="M3.5 12V4.5H11l9.5 9.5-7 7z"/><circle cx="7.8" cy="8.6" r="1.4"/></svg></div><div><h3>Avito</h3><p class="tl">В избранном — только то, что вы сохранили.</p><p>«Похожие объявления» и рекламные места в избранном.</p></div></div>
+      <div class="appc rv"><div class="ico" style="--c1:#2ad3a6;--c2:#0b8f74"><svg viewBox="0 0 24 24"><path d="M3.8 7.6L12 3.3l8.2 4.3v8.8L12 20.7l-8.2-4.3z"/><path d="M3.8 7.6L12 12l8.2-4.4M12 12v8.7"/></svg></div><div><h3>СДЭК</h3><p class="tl">Открыли — и сразу видите свою посылку.</p><p>Блок «Реклама · Горячие предложения» на главной.</p></div></div>
+      <div class="appc rv"><div class="ico" style="--c1:#5a8dff;--c2:#1e4fc2"><svg viewBox="0 0 24 24"><rect x="3.5" y="5.5" width="17" height="13" rx="2.5"/><path d="M4 7.2l8 5.8 8-5.8"/></svg></div><div><h3>Почта России</h3><p class="tl">Трек-номер без рекламной карусели.</p><p>Карусель рекламных баннеров, места рекламы Яндекса, «Спецпредложения».</p></div></div>
+      <div class="appc rv"><div class="ico" style="--c1:#ff6a3d;--c2:#e8173a"><svg viewBox="0 0 24 24"><rect x="3.8" y="8.3" width="16.4" height="4.4" rx="1"/><path d="M5.3 12.7v7.3h13.4v-7.3M12 8.3V20"/><path d="M12 8.3C10.6 5.6 7.3 5.4 7.3 7.4 7.3 8.3 9.4 8.3 12 8.3zM12 8.3c1.4-2.7 4.7-2.9 4.7-.9 0 .9-2.1.9-4.7.9z"/></svg></div><div><h3>AliExpress</h3><p class="tl">Лента без купонных полок и чужих витрин.</p><p>«Звёздные купоны» и витрины брендов на главной, рекламные товары в ленте «Для вас», «Товары от партнеров» и «Вы смотрели» в профиле и корзине.</p></div></div>
+      <div class="appc rv"><div class="ico" style="--c1:#9d6bff;--c2:#5525d1"><svg viewBox="0 0 24 24"><path d="M6.5 7v10M17.5 7v10M4 9.5v5M20 9.5v5M6.5 12h11"/></svg></div><div><h3>DDX Fitness</h3><p class="tl">Записались на тренировку — и всё.</p><p>Карусель баннеров и сторис на главной.</p></div></div>
+      <div class="appc rv"><div class="ico" style="--c1:#4ad66d;--c2:#14963c"><svg viewBox="0 0 24 24"><path d="M12 21s-6.5-6-6.5-11a6.5 6.5 0 0 1 13 0c0 5-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/></svg></div><div><h3>2GIS</h3><p class="tl">Маршрут домой без лишних подсказок.</p><p>Сторис, реклама в «Рекомендуем вам» и рекламный баннер на экране поиска; значок наград «+360 ★».</p></div></div>
     </div>
-    <p class="plus rv"><span class="ru">Плюс блокируются рекламные и трекинговые сервисы: AppMetrica, Adjust, AppsFlyer, рекламная сеть Яндекса и другие.</span><span class="en">Plus ad and tracking services are blocked: AppMetrica, Adjust, AppsFlyer, Yandex's ad network and others.</span></p>
+    <p class="plus rv">Плюс блокируются рекламные и трекинговые сервисы: AppMetrica, Adjust, AppsFlyer, рекламная сеть Яндекса и другие.</p>
   </div>
 </section>
 
 <section id="how">
   <div class="wrap">
-    <div class="kicker rv"><span class="ru">Как это работает</span><span class="en">How it works</span></div>
-    <h2 class="rv"><span class="ru">Всё на телефоне.<br><span class="dim">Ничего лишнего.</span></span><span class="en">All on your phone.<br><span class="dim">Nothing more.</span></span></h2>
+    <div class="kicker rv">Как это работает</div>
+    <h2 class="rv">Всё на телефоне.<br><span class="dim">Ничего лишнего.</span></h2>
     <div class="grid3">
       <div class="feat rv">
-        <svg viewBox="0 0 24 24"><rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M10 18.5h4"/></svg>
-        <h3><span class="ru">Только на устройстве</span><span class="en">On the device only</span></h3>
-        <p><span class="ru">Скрипт получает ответ сервера приложения, вырезает рекламный блок и отдаёт остальное. Третьим лицам ничего не отправляется.</span><span class="en">The script takes the app's server response, cuts the ad block out and passes on the rest. Nothing goes to third parties.</span></p>
+        <span class="ico" style="--c1:#3d8bff;--c2:#0047e0"><svg viewBox="0 0 24 24"><rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M10 18.5h4"/></svg></span>
+        <h3>Только на устройстве</h3>
+        <p>Скрипт получает ответ сервера приложения, вырезает рекламный блок и отдаёт остальное. Третьим лицам ничего не отправляется.</p>
       </div>
       <div class="feat rv">
-        <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/><path d="M17 16l3 3m0-3l-3 3"/></svg>
-        <h3><span class="ru">Точечно</span><span class="en">Precise</span></h3>
-        <p><span class="ru">Реклама находится по обязательной маркировке, а рекомендации — по названиям блоков. Ответ без рекламы не меняется вовсе.</span><span class="en">Ads are found by their legally required marking, recommendations by block names. A response without ads isn't touched at all.</span></p>
+        <span class="ico" style="--c1:#ff9f0a;--c2:#e8590c"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/><path d="M17 16l3 3m0-3l-3 3"/></svg></span>
+        <h3>Точечно</h3>
+        <p>Реклама находится по обязательной маркировке, а рекомендации — по названиям блоков. Ответ без рекламы не меняется вовсе.</p>
       </div>
       <div class="feat rv">
-        <svg viewBox="0 0 24 24"><path d="M12 3l7 3v5.5c0 4.4-3 8-7 9.5-4-1.5-7-5.1-7-9.5V6z"/><path d="M9 12l2 2 4-4"/></svg>
-        <h3><span class="ru">Аккуратно</span><span class="en">Careful</span></h3>
-        <p><span class="ru">Расшифровываются только адреса из списка модуля. Банки, Госуслуги и мессенджеры в него не входят.</span><span class="en">Only the addresses in the module's list are decrypted. Banks, Gosuslugi and messengers aren't on it.</span></p>
+        <span class="ico" style="--c1:#4ad66d;--c2:#14963c"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5.5c0 4.4-3 8-7 9.5-4-1.5-7-5.1-7-9.5V6z"/><path d="M9 12l2 2 4-4"/></svg></span>
+        <h3>Аккуратно</h3>
+        <p>Расшифровываются только адреса из списка модуля. Банки, Госуслуги и мессенджеры в него не входят.</p>
       </div>
     </div>
   </div>
@@ -337,52 +367,46 @@
 
 <section id="install">
   <div class="wrap">
-    <div class="kicker rv"><span class="ru">Установка</span><span class="en">Install</span></div>
-    <h2 class="rv"><span class="ru">Три шага<br><span class="dim">и пара минут.</span></span><span class="en">Three steps,<br><span class="dim">a couple of minutes.</span></span></h2>
-    <p class="sub rv"><span class="ru">Нужен iPhone с установленным <a href="https://apps.apple.com/app/shadowrocket/id932747118" style="text-decoration:underline">Shadowrocket</a>.</span><span class="en">You'll need an iPhone with <a href="https://apps.apple.com/app/shadowrocket/id932747118" style="text-decoration:underline">Shadowrocket</a> installed.</span></p>
+    <div class="kicker rv">Установка</div>
+    <h2 class="rv">Три шага<br><span class="dim">и пара минут.</span></h2>
+    <p class="sub rv">Нужен iPhone с установленным <a href="https://apps.apple.com/app/shadowrocket/id932747118" style="text-decoration:underline">Shadowrocket</a>.</p>
     <div class="steps">
       <div class="step rv"><div>
-        <h3><span class="ru">Включите расшифровку HTTPS</span><span class="en">Turn on HTTPS decryption</span></h3>
-        <ol class="ru">
+        <h3>Включите расшифровку HTTPS</h3>
+        <ol>
           <li>Вкладка с конфигами → <b>ⓘ</b> справа от вашего конфига.</li>
           <li>«Расшифровка HTTPS» → «Сертификат»: сгенерируйте и установите новый CA-сертификат.</li>
           <li>Настройки iOS → Основные → VPN и управление устройством → установите профиль.</li>
           <li>Настройки iOS → Основные → Об этом устройстве → Доверие сертификатам → включите.</li>
           <li>Вернитесь в Shadowrocket и включите «Расшифровку HTTPS» в том же конфиге.</li>
         </ol>
-        <ol class="en">
-          <li>Config tab → <b>ⓘ</b> next to your config.</li>
-          <li>HTTPS Decryption → Certificate: generate and install a new CA certificate.</li>
-          <li>iOS Settings → General → VPN &amp; Device Management → install the profile.</li>
-          <li>iOS Settings → General → About → Certificate Trust Settings → turn it on.</li>
-          <li>Back in Shadowrocket, turn on HTTPS Decryption in the same config.</li>
-        </ol>
+        
       </div></div>
       <div class="step rv"><div>
-        <h3><span class="ru">Добавьте модуль</span><span class="en">Add the module</span></h3>
-        <p><span class="ru">Вкладка с конфигами → «Модули» → <b>＋</b> → вставьте ссылку и проверьте, что модуль включён.</span><span class="en">Config tab → Modules → <b>＋</b> → paste the link and make sure the module is on.</span></p>
-        <div class="url" id="modUrl">https://raw.githubusercontent.com/Melidovskiy/ru-apps-adblock/main/RU-Apps-AdBlock.sgmodule<button class="copy" data-copy="#modUrl"><span class="ru">Копировать</span><span class="en">Copy</span></button></div>
+        <h3>Добавьте модуль</h3>
+        <p>Вкладка с конфигами → «Модули» → <b>＋</b> → вставьте ссылку и проверьте, что модуль включён.</p>
+        <div class="url" id="modUrl">https://raw.githubusercontent.com/Melidovskiy/ru-apps-adblock/main/RU-Apps-AdBlock.sgmodule<button class="copy" data-copy="#modUrl">Копировать</button></div>
       </div></div>
       <div class="step rv"><div>
-        <h3><span class="ru">Перезапустите приложения</span><span class="en">Restart the apps</span></h3>
-        <p><span class="ru">Смахните их из списка открытых и откройте снова. Часть правил Wildberries применяется со следующего запуска.</span><span class="en">Swipe them out of the app switcher and open them again. Some Wildberries rules apply from the next launch.</span></p>
+        <h3>Перезапустите приложения</h3>
+        <p>Смахните их из списка открытых и откройте снова. Часть правил Wildberries применяется со следующего запуска.</p>
       </div></div>
     </div>
 
     <div class="limits">
-      <div class="lim rv"><h3><span class="ru">Сертификат — ваш ключ</span><span class="en">The certificate is your key</span></h3><p><span class="ru">Не делитесь экспортом конфигурации Shadowrocket: в нём может быть сертификат с закрытым ключом.</span><span class="en">Don't share a Shadowrocket config export: it may contain the certificate with its private key.</span></p></div>
-      <div class="lim rv"><h3><span class="ru">Если что-то сломалось</span><span class="en">If something breaks</span></h3><p><span class="ru">Выключите модуль и перезапустите приложение. Помогло — <a href="https://github.com/Melidovskiy/ru-apps-adblock/issues/new/choose" style="text-decoration:underline">сообщите о проблеме</a>.</span><span class="en">Turn the module off and restart the app. If that helps, <a href="https://github.com/Melidovskiy/ru-apps-adblock/issues/new/choose" style="text-decoration:underline">report it</a>.</span></p></div>
-      <div class="lim rv"><h3><span class="ru">Плашки «Включён VPN»</span><span class="en">«VPN is on» notices</span></h3><p><span class="ru">Их рисуют сами приложения (Госуслуги, банки), модуль их не уберёт.</span><span class="en">The apps draw them themselves (Gosuslugi, banks); the module can't remove them.</span></p></div>
-      <div class="lim rv"><h3><span class="ru">Обновления приложений</span><span class="en">App updates</span></h3><p><span class="ru">После обновления что-то может снова появиться, пока правила не обновят. Модуль обновляется по той же ссылке.</span><span class="en">After an app update something may come back until the rules catch up. The module updates from the same link.</span></p></div>
+      <div class="lim rv"><h3>Сертификат — ваш ключ</h3><p>Не делитесь экспортом конфигурации Shadowrocket: в нём может быть сертификат с закрытым ключом.</p></div>
+      <div class="lim rv"><h3>Если что-то сломалось</h3><p>Выключите модуль и перезапустите приложение. Помогло — <a href="https://github.com/Melidovskiy/ru-apps-adblock/issues/new/choose" style="text-decoration:underline">сообщите о проблеме</a>.</p></div>
+      <div class="lim rv"><h3>Плашки «Включён VPN»</h3><p>Их рисуют сами приложения (Госуслуги, банки), модуль их не уберёт.</p></div>
+      <div class="lim rv"><h3>Обновления приложений</h3><p>После обновления что-то может снова появиться, пока правила не обновят. Модуль обновляется по той же ссылке.</p></div>
     </div>
   </div>
 </section>
 
 <div class="final">
   <div class="wrap">
-    <h2 class="rv"><span class="ru">Меньше рекламы.<br><span class="dim">Больше спокойствия.</span></span><span class="en">Fewer ads.<br><span class="dim">More calm.</span></span></h2>
+    <h2 class="rv">Меньше рекламы.<br><span class="dim">Больше спокойствия.</span></h2>
     <div class="cta rv">
-      <a class="btn primary" href="#install"><span class="ru">Установить</span><span class="en">Install</span></a>
+      <a class="btn primary" href="#install">Установить</a>
       <a class="btn ghost" href="https://github.com/Melidovskiy/ru-apps-adblock"><svg><use href="#gh"/></svg>GitHub</a>
     </div>
   </div>
@@ -391,33 +415,17 @@
 <footer>
   <div class="wrap">
     <div class="row">
-      <span class="logo" style="color:var(--text)"><svg><use href="#logo"/></svg>RU Apps AdBlock</span>
+      <span class="logo" style="color:var(--text)"><span class="ic"><svg><use href="#logo"/></svg></span>RU Apps AdBlock</span>
       <span><a href="https://github.com/Melidovskiy/ru-apps-adblock">GitHub</a> · <a href="https://github.com/Melidovskiy/ru-apps-adblock/blob/main/LICENSE">MIT</a></span>
     </div>
-    <p><span class="ru">Независимый проект, не связан с перечисленными сервисами. Названия и товарные знаки принадлежат их правообладателям и используются только для указания совместимости. Фильтрация выполняется на устройстве пользователя и не изменяет данные на серверах сервисов. Телефон в сравнении — иллюстрация.</span><span class="en">An independent project, not affiliated with the services listed. Names and trademarks belong to their owners and are used only to indicate compatibility. Filtering happens on the user's device and doesn't change any data on the services' servers. The phone in the comparison is an illustration.</span></p>
-    <p><span class="ru">Проект предоставляется «как есть». Использование Shadowrocket, расшифровки HTTPS и сторонних модулей может регулироваться условиями соответствующих сервисов; пользователь сам отвечает за их соблюдение.</span><span class="en">Provided as is. Using Shadowrocket, HTTPS decryption and third-party modules may be subject to the terms of the services involved; users are responsible for following them.</span></p>
+    <p>Независимый проект, не связан с перечисленными сервисами. Названия и товарные знаки принадлежат их правообладателям и используются только для указания совместимости. Фильтрация выполняется на устройстве пользователя и не изменяет данные на серверах сервисов. Телефон в сравнении — иллюстрация.</p>
+    <p>Проект предоставляется «как есть». Использование Shadowrocket, расшифровки HTTPS и сторонних модулей может регулироваться условиями соответствующих сервисов; пользователь сам отвечает за их соблюдение.</p>
   </div>
 </footer>
 <div class="toast" id="toast"></div>
 
 <script>
 (function () {
-  var saved = null;
-  try { saved = localStorage.getItem('lang'); } catch (e) {}
-  var lang = saved || ((navigator.language || '').toLowerCase().indexOf('ru') === 0 || !navigator.language ? 'ru' : 'en');
-  function setLang(l) {
-    lang = l;
-    document.body.setAttribute('data-lang', l);
-    document.documentElement.lang = l;
-    document.title = l === 'ru' ? 'RU Apps AdBlock — модуль Shadowrocket без рекламы в российских приложениях'
-                                : 'RU Apps AdBlock — a Shadowrocket module against ads in Russian apps';
-    [].forEach.call(document.querySelectorAll('.lang button'), function (b) { b.classList.toggle('on', b.getAttribute('data-set') === l); });
-  }
-  setLang(lang);
-  [].forEach.call(document.querySelectorAll('.lang button'), function (b) {
-    b.addEventListener('click', function () { setLang(b.getAttribute('data-set')); try { localStorage.setItem('lang', lang); } catch (e) {} });
-  });
-
   // Before/after slider: drag, click or arrow keys; a short sweep when it first comes into view.
   var box = document.getElementById('compare'), tagL = document.getElementById('tagL'), tagR = document.getElementById('tagR');
   var pos = 50, dragging = false, touched = false;
@@ -444,6 +452,20 @@
   set(50);
   var still = /[?&]x=(\d+)/.exec(location.search);   // ?x=30: a still frame (for screenshots)
   if (still) { touched = true; set(+still[1]); }
+  // The heading's phrases, one after another
+  (function () {
+    var ph = document.querySelectorAll('#rot .ph'), i = 0;
+    if (ph.length < 2 || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
+    setInterval(function () {
+      if (document.hidden) return;
+      var cur = ph[i], next = ph[(i + 1) % ph.length]; i = (i + 1) % ph.length;
+      cur.classList.remove('on'); cur.classList.add('out'); cur.setAttribute('aria-hidden', 'true');
+      setTimeout(function () {   // the old phrase leaves first, then the new one comes in
+        cur.classList.remove('out');
+        next.classList.add('on'); next.removeAttribute('aria-hidden');
+      }, 380);
+    }, 3200);
+  })();
   var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   function sweep() {
     if (reduce || touched) return;
@@ -478,7 +500,7 @@
       var el = document.querySelector(b.getAttribute('data-copy'));
       var text = el.firstChild.textContent.trim();
       var done = function () {
-        toast.textContent = lang === 'ru' ? 'Ссылка скопирована' : 'Link copied';
+        toast.textContent = 'Ссылка скопирована';
         toast.classList.add('on'); clearTimeout(done.t); done.t = setTimeout(function () { toast.classList.remove('on'); }, 1600);
       };
       if (navigator.clipboard) navigator.clipboard.writeText(text).then(done, function () {}); else done();
