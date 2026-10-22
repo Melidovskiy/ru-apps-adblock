@@ -459,6 +459,28 @@ t('L3 ответы без переключателей — как есть', { u
 t('L4 рекламу уже скрывают — как есть', { url: 'https://api.letterboxd.com/api/v0/me/account-status', body: { accountStatus: 'Active', hideAds: true } },
   (p, out, r) => { eq(r.result, {}); });
 
+group('2. Avito: реклама под объявлением; AliExpress: страница заказа');
+{
+t('V1 места для рекламы в карточке объявления -> пустые', { url: 'https://app.avito.ru/api/2/items/8356689486/banners',
+  body: { success: { positions: { item_btf_ios: [{ avito: { bannerCode: 'item_btf_ios', params: { advRequestId: 'x' } } }] }, analyticParams: { banner_pagetype: 'item' } } } },
+  (p) => { eq(p, { success: { positions: { item_btf_ios: [] }, analyticParams: { banner_pagetype: 'item' } } }); });
+t('V2 мест для рекламы нет — как есть', { url: 'https://app.avito.ru/api/2/items/1/banners', body: { success: { positions: {} } } },
+  (p, out, r) => { eq(r.result, {}); });
+const W = (name, data) => ({ uuid: 'u-' + name, name: name, vertical: 'order', version: 1, state: { data: data || {} }, props: {}, staticProps: {} });
+const snip = (n) => Array.from({ length: n }, (_, i) => ({ imageUrl: 'https://ae04.alicdn.com/kf/s' + i + '.jpg', price: '99 ₽', discount: '-73%' }));
+const order = { alias: 'order-details', layout: { widgetInstances: [{ uuid: 'root', name: 'Root', children: [
+  W('OrderDetailsInformerV2', { data: { title: 'Заказ в пути' } }),
+  W('OrderDetailsProductsSummary', { data: { products: [{ title: 'Тапочки', price: '617,00 ₽', image: 'https://ae04.alicdn.com/kf/p.jpg' }] } }),
+  W('OrderDetailsActionsV2', { data: { actions: [{ title: 'Подтвердить получение' }, { title: 'Скрыть заказ' }] } }),
+  W('HomepageProfitBannerCommon', { data: { title: 'ОДНА ЦЕНА', data: { snippets: snip(11) } } }),
+  W('RecommendationList', { data: { title: 'Подобрали для вас' } })] }] } };
+t('A-O1 страница заказа: «Одна цена» и «Подобрали для вас» убираются, заказ — как есть', { url: 'https://wapi.aliexpress.ru/mobile-layout/order-details-redesign23', body: order },
+  (p) => { eq(p.layout.widgetInstances[0].children.map((w) => w.name), ['OrderDetailsInformerV2', 'OrderDetailsProductsSummary', 'OrderDetailsActionsV2']); });
+t('A-O2 лента «Подобрали для вас» под заказом -> пустая', { url: 'https://wapi.aliexpress.ru/aer-jsonapi/bx/mobile/recommend/order-recommend',
+  body: { data: { items: [{ rowV2: { items: [{ productId: 1 }, { productId: 2 }] } }], trace: 't' } } },
+  (p) => { eq(p.data.items, []); eq(p.data.trace, 't'); });
+}
+
 // ═════════════════════ 3. Эталоны ═════════════════════
 group('3. Эталоны типовых ответов');
 const FIXTURES = (function () {

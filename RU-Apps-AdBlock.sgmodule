@@ -1,5 +1,5 @@
-#!name=RU Apps AdBlock v3.25
-#!desc=Ozon / WB / Яндекс Маркет / Яндекс Go / Avito / СДЭК / Почта России / AliExpress / DDX Fitness / 2GIS / Letterboxd. v3.25: Letterboxd — без пустых рамок рекламы «REMOVE ADS».
+#!name=RU Apps AdBlock v3.26
+#!desc=Ozon / WB / Яндекс Маркет / Яндекс Go / Avito / СДЭК / Почта России / AliExpress / DDX Fitness / 2GIS / Letterboxd. v3.26: Avito — без баннера «Реклама» под объявлением; AliExpress — без «Одна цена» и «Подобрали для вас» на странице заказа.
 
 [Rule]
 # ───── Запрет QUIC для расшифровываемых хостов: иначе HTTP/3 идёт мимо MITM и скрипта ─────

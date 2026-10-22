@@ -1,5 +1,5 @@
 /*
- * RU Apps AdBlock v3.25 — фильтр ответов для Shadowrocket (type=http-response, requires-body=true)
+ * RU Apps AdBlock v3.26 — фильтр ответов для Shadowrocket (type=http-response, requires-body=true)
  * Ozon / Wildberries / Яндекс Маркет / Яндекс Go / Avito / СДЭК / Почта России / AliExpress / DDX Fitness / 2GIS /
  * Letterboxd
  *
@@ -98,6 +98,8 @@
  *       колонки — неровные колонки приложение отбрасывало (см. v3.23).
  * v3.25: Letterboxd — пустые рамки рекламы («REMOVE ADS» на вкладке Films и в профиле): в ответах API переключатели
  *       hideAds / hideAdsInContent -> true, show…Ads -> false. Статус участника и платные функции не трогаются.
+ * v3.26: Avito — баннер «Реклама» под объявлением: места для рекламы в карточке (…/items/<id>/banners) -> пустые.
+ *       AliExpress, страница заказа — «Одна цена» и «Подобрали для вас» (заголовки и лента рекомендаций под заказом).
  *
  * Страховки: тело не меняется, если ничего не найдено; подъём вверх не выше блока в 20% ответа;
  * один удаляемый элемент не больше 40% ответа; если суммарно удаляется больше 60% — ответ как есть.
@@ -238,6 +240,18 @@
 
   var data;
   try { data = JSON.parse(protectBig(body)); } catch (e) { return pass('json parse error'); }
+
+  // Avito, карточка объявления: места для рекламы приходят отдельным запросом …/items/<id>/banners
+  // (success.positions.<место>[], например item_btf_ios — баннер «Реклама» под объявлением; сам баннер приложение берёт
+  // с adv/network/banner). Списки мест -> пустые: баннер не запрашивается и не рисуется, пустого места не остаётся.
+  if (/(^|\.)avito\.ru$/.test(host) && /^\/api\/\d+\/items\/\d+\/banners$/.test(path) && data && data.success &&
+      data.success.positions && typeof data.success.positions === 'object') {
+    var avPos = [], avP = data.success.positions;
+    for (var apk in avP) if (Array.isArray(avP[apk]) && avP[apk].length) { avPos.push(apk + '[' + avP[apk].length + ']'); avP[apk] = []; }
+    if (DEBUG) log('Avito item ad slots: ' + (avPos.join(',') || 'none'));
+    if (!avPos.length) return $done({});
+    return $done({ body: restoreBig(JSON.stringify(data)) });
+  }
 
   if (IS_LB) {
     var lbAt = [];
@@ -897,8 +911,9 @@
     return o;                                                      // числа/булевы как есть
   }
 
-  // AliExpress: полка «Товары от партнеров» (p4p-only-shelf — только оплаченные показы) и рекомендации корзины -> пусто
-  if (IS_ALI && /\/recommend\/(v\d+\/p4p-only-shelf|shopping-cart\/v\d+)$/.test(path) && data && data.data &&
+  // AliExpress: полка «Товары от партнеров» (p4p-only-shelf — только оплаченные показы), рекомендации корзины и лента
+  // «Подобрали для вас» под заказом (order-recommend) -> пусто
+  if (IS_ALI && /\/recommend\/(v\d+\/p4p-only-shelf|shopping-cart\/v\d+|order-recommend)$/.test(path) && data && data.data &&
       Array.isArray(data.data.items) && data.data.items.length) {
     stats.blockBytes += size(data.data.items); stats.removed += data.data.items.length;
     stats.reasons['ae-recs-empty'] = data.data.items.length; data.data.items = [];
@@ -1138,16 +1153,17 @@
   if (!STRIP && !POCHTA_BANNERS && !IS_WB_FIN) scan(data, 0);
 
   // ───────── Блоки-рекомендации по заголовку ─────────
-  // AliExpress, профиль (mobile-layout/profile) и корзина (mobile-layout/shopcartFusion): блок = виджет (объект с uuid+name
-  //   в списке children, не корень страницы); «Товары от партнеров», «Вы смотрели», «Одна цена», «Рекомендуем вам»,
+  // AliExpress, профиль (mobile-layout/profile), корзина (mobile-layout/shopcartFusion) и страница заказа
+  //   (mobile-layout/order-details-redesign…): блок = виджет (объект с uuid+name в списке children, не корень страницы);
+  //   «Товары от партнеров», «Вы смотрели», «Одна цена», «Рекомендуем вам», «Подобрали для вас»,
   //   а также виджеты рекомендаций по имени (…Recommend…, …Waterfall…, …P4p…). Пункты меню профиля не трогаются.
   // Яндекс Маркет, избранное и корзина (api/screen/favourites|cart): блок = секция экрана (type …Section):
   //   «Достойны сердечка», «Может пригодиться».
   // Avito, избранное (favorites/items/widgets): «Похожие объявления».
   var TB = null, tbLog = [];
-  if (IS_ALI && /^\/mobile-layout\/(profile|shopcartFusion)$/.test(path))
+  if (IS_ALI && /^\/mobile-layout\/(profile|shopcartFusion|order-details-redesign\d*)$/.test(path))
     TB = { tag: 'AE', maxFrac: 0.95,
-           titles: /^(рекомендуем вам|товары от партн[её]ров|вы смотрели|одна цена)[.:!]?$/i,
+           titles: /^(рекомендуем вам|товары от партн[её]ров|вы смотрели|одна цена|подобрали для вас)[.:!]?$/i,
            keep: /служба поддержки|справка aliexpress|настройки и данные|купоны|мои отзывы|вопросы и ответы|награда каждый день|мои заказы/i,
            nameRe: /(Recommend|Recs(?![a-z])|Waterfall|P4p|P4P)/,
            isBlock: function (st) { var n = st.node; return st.inArr && st.arrKey === 'children' && n && typeof n.uuid === 'string' && typeof n.name === 'string'; } };
