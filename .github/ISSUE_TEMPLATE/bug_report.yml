@@ -16,11 +16,14 @@ body:
         - Wildberries
         - Яндекс Маркет
         - Яндекс Go
+        - Яндекс Еда
         - Avito
         - СДЭК
         - Почта России
         - AliExpress
         - DDX Fitness
+        - 2GIS
+        - Letterboxd
         - Другое
     validations:
       required: true
