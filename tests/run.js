@@ -341,7 +341,7 @@ tx('X3 relay error -> request goes as is (without accept-encoding)', () => {
   const r = runReq({ url: POS, headers: Object.assign({}, H), http: { err: 'timeout' } });
   eq(r.calls, [{ headers: Hx }]);
 });
-tx('X7 service/mobile_config: подарок в окне QR, ИИ-тренер, DDX Action, баннеры в чате -> выключены, остальное как есть', () => {
+tx('X15 service/mobile_config: подарок в окне QR, ИИ-тренер, DDX Action, баннеры в чате -> выключены, остальное как есть', () => {
   const body = JSON.stringify({ session_id: 's', request_id: 'r', data: [{ show_visits_history: true, training_plans_show: true, training_plans_show_release: true,
     is_chat_banners_enabled: false, is_chat_banners_enabled_v2: true, is_trainings_diary_enabled: true, is_flocktory_qr_banner_enabled: true,
     is_action_upsale_popup_available: true, superapp_main_page_is_recsys_enabled: false, superapp_main_page_is_ai_trainer_enabled: true }] });
