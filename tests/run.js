@@ -104,13 +104,17 @@ tx('M7 маршрутизация адресов: что идёт в скрип�
   const inScript = ['https://wapi.aliexpress.ru/mobile-layout/home/fusion', 'https://api.ozon.ru/api/composer-api.bx/page/json/v2?url=/my',
     'https://finance.wb.ru/api/offers-api/v1/product/offers', 'https://mobileapi.ddxfitness.ru/stories?x=1', 'https://tc.mobile.yandex.net/4.0/urbanads/sdk?',
     'https://stories.api.2gis.ru/3.0/stories?locale=ru_RU', 'https://tips-api.2giskz.app/api/1.0/tips?x=1', 'https://advisor.api.2gis.ru/api/3.0/ads/advise/gta?x',
-    'https://reward-system.2gis.com/progress', 'https://reward-system.2giskz.app/progress?x=1'];
+    ];
   const notScript = ['https://mobileapi.ddxfitness.ru/v2/employees/positions?x', 'https://api.finance.ozon.ru/mobile/obank/features', 'https://www.gosuslugi.ru/',
-    'https://advisor.api.2gis.ru/api/3.0/ads/sync', 'https://reward-system.2gis.com/assigned', 'https://social-graph.2gis.com/social-graph/users/friendship/list',
+    'https://advisor.api.2gis.ru/api/3.0/ads/sync', 'https://reward-system.2gis.com/progress', 'https://social-graph.2gis.com/social-graph/users/friendship/list',
     'https://stories.api.2gis.ru/3.0/stories/viewed'];
   inScript.forEach((u) => { if (!pat.test(u)) throw new Error('не идёт в скрипт: ' + u); });
   notScript.forEach((u) => { if (pat.test(u)) throw new Error('лишний в скрипте: ' + u); });
   if (!rw.some((re) => re.test('https://mobileapi.ddxfitness.ru/mobile_banners?request_source=mobile_app'))) throw new Error('баннеры DDX не отклоняются');
+  ['https://binario-delivery.api.2gis.ru/api/1.0/options/32/en/ios?lastVersion=1', 'https://binario-delivery-api.2giskz.app/api/1.0/options/241/ru/ios']
+    .forEach((u) => { if (!rw.some((re) => re.test(u))) throw new Error('рекламная база 2GIS не отклоняется: ' + u); });
+  ['https://binario-delivery.api.2gis.ru/api/1.0/flags/32/en/ios?lastVersion=1']
+    .forEach((u) => { if (rw.some((re) => re.test(u))) throw new Error('лишний отказ: ' + u); });
 });
 
 // ═════════════════════ 2. Поведение по приложениям ═════════════════════
@@ -406,22 +410,25 @@ const tips = { dashboard_id: 'd1', template: 'two_columns', columns: [
    { type: 'metarubric', height: 1, content: { metarubric_id: 9, title: 'Places to stay', subtitle: '5 021 places' }, action: { type: 'search_by_metarubric', value: '9' } }],
   [{ type: 'ad', height: 1, content: { title: 'Дымзавод', owner_id: 70000001234567890, ads_id: 'a1', ads_alg: 2, auction_id: 'au', position: 1 },
      action: { type: 'open_firm', value: '70000001234567890' } }]] };
-t('G3 «Рекомендуем вам»: колонки пустые, остальное как было', { url: 'https://tips.api.2gis.ru/api/1.0/tips?lang=ru', body: tips },
-  (p) => { eq(p, { dashboard_id: 'd1', template: 'two_columns', columns: [] }); });
+t('G3 «Рекомендуем вам»: убираются рекламные плитки и подборки гида, рубрики остаются', { url: 'https://tips.api.2gis.ru/api/1.0/tips?lang=ru', body: tips },
+  (p) => { const want = clone(tips); want.columns[0] = [tips.columns[0][1]]; want.columns[1] = []; eq(p, want); });
 const ads = { banners: [{ bannerId: 'b1', adsId: 'a', isAds: true, erid: ['2Vtzqx'], legalName: 'ПАО Сбербанк',
   content: { text: 'Отвечайте на вопросы и получайте сундуки с сюрпризами', options: { actions: [{ type: 'link', caption: 'Городской квиз' }], images: ['https://x/i.png'] } } }] };
 t('G4 рекламный баннер (advisor …/ads/advise/…) -> пустой список', { url: 'https://advisor.api.2gis.ru/api/3.0/ads/advise/gta?x=1', body: ads },
   (p) => { eq(p, { banners: [] }); });
-const progress = { xp: 1240, current_level: { level: 3, prizes: [{ name: 'flame', type: 'tail', status: 'received' }] },
-  next_level: { level: 4, prizes: [{ name: 'festive', type: 'tail' }] },
-  loot: { achievements: { scheduled: [{ title: 'Your welcome bonus', xp: 200 }, { title: 'Build a car route to work', xp: 160 }] } } };
-t('G5 значок «+360 ★»: награды в loot -> пустые, уровень и призы как были', { url: 'https://reward-system.2gis.com/progress', body: progress },
-  (p) => { const want = clone(progress); want.loot.achievements.scheduled = []; eq(p, want); });
-t('G6 длинные id в ответе 2GIS не округляются', { url: 'https://tips.api.2gis.ru/api/1.0/tips', body: '{"dashboard_id":70000001234567891,"columns":[[{"type":"card"}]]}' },
-  (p, out) => { eq(out, '{"dashboard_id":70000001234567891,"columns":[]}'); });
-t('G7 пустые списки и другие ответы 2GIS не меняются', { url: 'https://stories.api.2gis.ru/3.0/stories', body: [] },
+tx('G5 задания и награды, «Rate places», «Гид по городу»: запросы отклоняются правилами модуля', () => {
+  ['reward-system.2gis.com', 'reward-system.2giskz.app', 'checkin.2gis.com', 'checkin.2giskz.app', 'guide.api.2gis.com', 'guide-api.2giskz.app']
+    .forEach((h) => { if (MOD.split('\n').indexOf('DOMAIN,' + h + ',REJECT') === -1) throw new Error('не отклоняется: ' + h); });
+  if (/^DOMAIN,bonuses/m.test(MOD)) throw new Error('bonuses не должен отклоняться: на нём картинка карточки стажа');
+});
+t('G6 длинные id в ответе 2GIS не округляются', { url: 'https://tips.api.2gis.ru/api/1.0/tips',
+  body: '{"dashboard_id":70000001234567891,"columns":[[{"type":"card","content":{"org_id":70000001234567892}},{"type":"ad","content":{"ads_id":"a","owner_id":70000001234567893}}]]}' },
+  (p, out) => { eq(out, '{"dashboard_id":70000001234567891,"columns":[[{"type":"card","content":{"org_id":70000001234567892}}]]}'); });
+t('G7 пустые списки и ответы без рекламы не меняются', { url: 'https://stories.api.2gis.ru/3.0/stories', body: [] },
   (p, out, r) => { eq(r.result, {}); });
-t('G8 адрес 2GIS без правила — как есть (без общего поиска рекламы)', { url: 'https://reward-system.2gis.com/assigned',
+t('G7b «Рекомендуем вам» без рекламы — как есть', { url: 'https://tips.api.2gis.ru/api/1.0/tips', body: { columns: [[{ type: 'metarubric', content: { title: 'Discounts' } }]] } },
+  (p, out, r) => { eq(r.result, {}); });
+t('G8 адрес 2GIS без правила — как есть (без общего поиска рекламы)', { url: 'https://guide.api.2gis.com/v1/collections',
   body: { achievements: { daily: [{ title: 'Write a review', label: 'Реклама', image: 'https://x/y.png' }, { title: 'b', image: 'https://x/z.png' }] } } },
   (p, out, r) => { eq(r.result, {}); });
 }
