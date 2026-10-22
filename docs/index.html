@@ -1,0 +1,490 @@
+<!doctype html>
+<!--
+  The project's website, served by GitHub Pages from this docs/ folder (Settings → Pages → Deploy from a branch → main, /docs).
+  One page in Russian and English: the language follows the browser until chosen with the RU / EN switch.
+  The phone in the comparison is a drawing of a generic shopping app, not a screenshot of any real one.
+-->
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RU Apps AdBlock — модуль Shadowrocket без рекламы в российских приложениях</title>
+<meta name="description" content="Модуль Shadowrocket для iPhone: убирает рекламу и навязчивые рекомендации из Ozon, Wildberries, Яндекс Маркета, Яндекс Go, Avito, СДЭК, Почты России, AliExpress, DDX Fitness и 2GIS.">
+<meta name="theme-color" content="#000000">
+<meta property="og:title" content="RU Apps AdBlock">
+<meta property="og:description" content="Модуль Shadowrocket: меньше рекламы в Ozon, Wildberries, Яндекс Маркете, Яндекс Go, Avito, СДЭК, Почте России, AliExpress, DDX Fitness и 2GIS.">
+<meta property="og:image" content="https://melidovskiy.github.io/ru-apps-adblock/img/banner.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 3l10 4v8c0 6.5-4.3 11.6-10 14-5.7-2.4-10-7.5-10-14V7z' fill='none' stroke='white' stroke-width='2.4' stroke-linejoin='round'/%3E%3Cpath d='M11 11l10 10M21 11L11 21' stroke='white' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #000; --card: #111113; --card2: #18181b;
+    --line: rgba(255,255,255,.08); --line2: rgba(255,255,255,.14);
+    --text: #f5f5f7; --dim: #a1a1a6; --dim2: #6e6e73;
+    --r: 22px; --pad: 24px; --max: 1080px;
+    --ease: cubic-bezier(.22,.8,.24,1);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { background: var(--bg); color-scheme: dark; scroll-behavior: smooth; }
+  body { font: 17px/1.5 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: var(--text);
+         background: var(--bg); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+  a { color: inherit; text-decoration: none; }
+  img { display: block; max-width: 100%; }
+  .wrap { max-width: var(--max); margin: 0 auto; padding: 0 var(--pad); }
+  [data-lang="ru"] .en, [data-lang="en"] .ru { display: none !important; }
+
+  nav { position: sticky; top: 0; z-index: 20; backdrop-filter: saturate(160%) blur(18px); -webkit-backdrop-filter: saturate(160%) blur(18px);
+        background: rgba(0,0,0,.66); border-bottom: 1px solid var(--line); }
+  nav .wrap { display: flex; align-items: center; gap: 28px; height: 56px; }
+  .logo { display: flex; align-items: center; gap: 10px; font: 800 18px/1 'JetBrains Mono', monospace; letter-spacing: -.02em; white-space: nowrap; }
+  .logo svg { width: 22px; height: 22px; }
+  nav .links { display: flex; gap: 24px; margin-left: auto; font-size: 14px; color: var(--dim); }
+  nav .links a:hover { color: var(--text); }
+  .lang { display: flex; border: 1px solid var(--line2); border-radius: 999px; padding: 2px; font-size: 12px; font-weight: 600; }
+  .lang button { font: inherit; color: var(--dim); background: none; border: 0; padding: 4px 10px; border-radius: 999px; cursor: pointer; }
+  .lang button.on { background: var(--text); color: #000; }
+
+  header { padding: 88px 0 24px; position: relative; }
+  header::before { content: ''; position: absolute; inset: -120px 0 auto; height: 640px; pointer-events: none; z-index: -1;
+    background: radial-gradient(50% 60% at 50% 0%, rgba(255,255,255,.10), transparent 70%); }
+  .hero { display: grid; grid-template-columns: 1.15fr 1fr; gap: 56px; align-items: center; }
+  .eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--dim); border: 1px solid var(--line2);
+             border-radius: 999px; padding: 6px 14px; margin-bottom: 26px; }
+  .eyebrow i { width: 6px; height: 6px; border-radius: 50%; background: #30d158; box-shadow: 0 0 0 4px rgba(48,209,88,.15); }
+  h1 { font-size: clamp(40px, 5.4vw, 64px); line-height: 1.02; letter-spacing: -.045em; font-weight: 700; }
+  h1 .dim { color: var(--dim2); }
+  .lead { font-size: clamp(18px, 2vw, 21px); color: var(--dim); max-width: 520px; margin-top: 22px; line-height: 1.45; }
+  .cta { display: flex; gap: 12px; margin-top: 32px; flex-wrap: wrap; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-size: 16px; padding: 13px 22px; border-radius: 999px;
+         transition: transform .2s var(--ease), background .2s; cursor: pointer; border: 0; font-family: inherit; }
+  .btn:active { transform: scale(.97); }
+  .btn.primary { background: var(--text); color: #000; }
+  .btn.primary:hover { background: #fff; }
+  .btn.ghost { border: 1px solid var(--line2); color: var(--text); background: none; }
+  .btn.ghost:hover { background: rgba(255,255,255,.06); }
+  .btn svg { width: 18px; height: 18px; }
+  .apps-line { margin-top: 30px; color: var(--dim2); font-size: 14px; line-height: 1.7; max-width: 520px; }
+
+  /* Phone with the before/after slider */
+  .phone-box { display: flex; flex-direction: column; align-items: center; }
+  .phone { position: relative; width: min(340px, 82vw); padding: 11px; border-radius: 54px; background: #0c0c0d; border: 1px solid var(--line2);
+           box-shadow: 0 40px 120px rgba(255,255,255,.07), 0 30px 80px rgba(0,0,0,.85), inset 0 0 0 2px #1d1d20; }
+  .compare { position: relative; aspect-ratio: 9 / 19.5; border-radius: 44px; overflow: hidden; cursor: ew-resize; touch-action: pan-y;
+             user-select: none; -webkit-user-select: none; --x: 50%; outline: none; text-align: left; }
+  .compare .side { position: absolute; inset: 0; }
+  .compare .before { clip-path: inset(0 calc(100% - var(--x)) 0 0); }
+  .island { position: absolute; z-index: 4; top: 11px; left: 50%; width: 31%; height: 3.6%; transform: translateX(-50%); background: #000; border-radius: 999px; }
+  .divider { position: absolute; z-index: 5; top: 0; bottom: 0; left: var(--x); width: 2px; margin-left: -1px; background: rgba(255,255,255,.92);
+             box-shadow: 0 0 18px rgba(0,0,0,.5); pointer-events: none; }
+  .handle { position: absolute; z-index: 6; top: 50%; left: var(--x); width: 44px; height: 44px; margin: -22px 0 0 -22px; border-radius: 50%;
+            background: rgba(255,255,255,.97); box-shadow: 0 6px 24px rgba(0,0,0,.45); display: grid; place-items: center; pointer-events: none;
+            transition: transform .2s var(--ease); }
+  .compare:focus-visible .handle, .compare.drag .handle { transform: scale(1.08); }
+  .handle svg { width: 20px; height: 20px; }
+  .tag { position: absolute; z-index: 6; top: 50%; margin-top: 30px; font-size: 11px; font-weight: 600; padding: 5px 10px; border-radius: 999px;
+         white-space: nowrap; pointer-events: none; transition: opacity .3s; background: rgba(0,0,0,.65); color: #fff; border: 1px solid rgba(255,255,255,.14);
+         backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+  .tag.l { right: calc(100% - var(--x) + 8px); } .tag.r { left: calc(var(--x) + 8px); background: rgba(255,255,255,.94); color: #000; }
+  .hint { color: var(--dim2); font-size: 13px; margin-top: 22px; text-align: center; }
+
+  /* The drawn shopping app (sizes in em of a font that scales with the phone) */
+  .app { position: absolute; inset: 0; background: #f4f4f6; color: #1c1c1e; font-size: calc(min(340px, 82vw) / 33); padding: 4.6em 1.4em 0; overflow: hidden; }
+  .app .top { display: flex; justify-content: space-between; font-weight: 600; font-size: .95em; margin: -3.3em .4em 2.2em; }
+  .app .search { height: 3.2em; border-radius: 1.1em; background: #fff; box-shadow: 0 1px 0 rgba(0,0,0,.05); display: flex; align-items: center; gap: .7em;
+                 padding: 0 1em; color: #8e8e93; font-size: 1em; }
+  .app .search i { width: 1.1em; height: 1.1em; border: .15em solid #aeaeb2; border-radius: 50%; }
+  .app .chips { display: flex; gap: .6em; margin-top: 1.1em; overflow: hidden; }
+  .app .chips span { flex: none; padding: .55em 1em; border-radius: 999px; background: #e5e5ea; font-size: .9em; font-weight: 500; }
+  .app .chips span:first-child { background: #1c1c1e; color: #fff; }
+  .ad { display: inline-block; font-size: .72em; font-weight: 700; letter-spacing: .02em; color: #fff; background: rgba(0,0,0,.55); padding: .25em .6em; border-radius: .5em; }
+  .app .banner { margin-top: 1.2em; height: 11.5em; border-radius: 1.4em; padding: 1.1em; position: relative; color: #fff;
+                 background: linear-gradient(120deg, #ff7a59, #ff3d7f 55%, #a64dff); overflow: hidden; }
+  .app .banner b { display: block; font-size: 1.55em; line-height: 1.1; margin-top: 1.2em; max-width: 9em; }
+  .app .banner small { display: block; opacity: .85; margin-top: .4em; }
+  .app .banner::after { content: ''; position: absolute; right: -2em; bottom: -2.5em; width: 9em; height: 9em; border-radius: 50%; background: rgba(255,255,255,.18); }
+  .app .dots { display: flex; gap: .35em; justify-content: center; margin-top: .7em; }
+  .app .dots i { width: .45em; height: .45em; border-radius: 50%; background: #c7c7cc; }
+  .app .dots i:first-child { width: 1.2em; border-radius: 999px; background: #1c1c1e; }
+  .app h5 { font-size: 1.15em; margin: 1.3em 0 .7em; display: flex; align-items: center; gap: .5em; }
+  .app h5 .ad { background: #ffd60a; color: #3a2f00; }
+  .app .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: .8em; }
+  .card { background: #fff; border-radius: 1.2em; padding: .55em; position: relative; }
+  .card .ph { height: 7.4em; border-radius: .8em; background: linear-gradient(135deg, #e5e5ea, #d1d1d6); }
+  .card .p { height: .9em; width: 55%; border-radius: .5em; background: #1c1c1e; margin-top: .7em; }
+  .card .t { height: .7em; width: 85%; border-radius: .5em; background: #d1d1d6; margin-top: .45em; }
+  .card .t2 { width: 60%; }
+  .card .ad { position: absolute; top: .9em; left: .9em; }
+  .card.promo .ph { background: linear-gradient(135deg, #64d2ff, #5e5ce6); }
+  .card.promo2 .ph { background: linear-gradient(135deg, #ffd60a, #ff9f0a); }
+  .tabbar { position: absolute; left: 0; right: 0; bottom: 0; height: 5.6em; background: rgba(255,255,255,.92); border-top: 1px solid #e5e5ea;
+            display: flex; justify-content: space-around; padding-top: .9em; }
+  .tabbar i { width: 1.6em; height: 1.6em; border-radius: .5em; background: #c7c7cc; }
+  .tabbar i:first-child { background: #1c1c1e; }
+  .tabbar i:nth-child(3)::after { content: '3'; position: relative; top: -.6em; left: 1.1em; font: 700 .6em/1 Inter, sans-serif; color: #fff;
+                                  background: #ff3b30; border-radius: 999px; padding: .2em .45em; }
+
+  section { padding: 110px 0 0; }
+  .kicker { font-size: 14px; font-weight: 600; color: var(--dim); letter-spacing: .02em; }
+  h2 { font-size: clamp(32px, 5vw, 52px); line-height: 1.06; letter-spacing: -.035em; font-weight: 700; margin-top: 10px; max-width: 760px; }
+  h2 .dim { color: var(--dim2); }
+  .sub { color: var(--dim); font-size: 19px; max-width: 660px; margin-top: 16px; }
+  .apps { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-top: 44px; }
+  .appc { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 22px 24px; display: grid; grid-template-columns: 44px 1fr; gap: 16px;
+          transition: border-color .3s, transform .4s var(--ease); }
+  .appc:hover { border-color: var(--line2); transform: translateY(-2px); }
+  .mono { width: 44px; height: 44px; border-radius: 12px; background: var(--card2); border: 1px solid var(--line2); display: grid; place-items: center;
+          font-weight: 700; font-size: 17px; color: var(--text); letter-spacing: -.02em; }
+  .mono.s { font-size: 13px; }
+  .appc h3 { font-size: 17px; font-weight: 600; letter-spacing: -.01em; }
+  .appc p { color: var(--dim); font-size: 14.5px; margin-top: 4px; line-height: 1.5; }
+  .plus { margin-top: 14px; color: var(--dim); font-size: 15px; }
+
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 44px; }
+  .feat { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 26px; }
+  .feat svg { width: 28px; height: 28px; stroke: var(--text); fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  .feat h3 { font-size: 18px; font-weight: 600; margin-top: 16px; letter-spacing: -.01em; }
+  .feat p { color: var(--dim); font-size: 15px; margin-top: 8px; }
+
+  .steps { counter-reset: s; margin-top: 44px; display: grid; gap: 14px; }
+  .step { display: grid; grid-template-columns: 52px 1fr; gap: 18px; background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 24px; }
+  .step::before { counter-increment: s; content: counter(s); width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line2);
+                  display: grid; place-items: center; font-weight: 600; font-size: 15px; color: var(--dim); }
+  .step h3 { font-size: 18px; font-weight: 600; letter-spacing: -.01em; }
+  .step p, .step li { color: var(--dim); font-size: 15px; }
+  .step p { margin-top: 6px; }
+  .step ol { margin: 10px 0 0 18px; display: grid; gap: 4px; }
+  .url { position: relative; margin-top: 14px; background: #000; border: 1px solid var(--line); border-radius: 14px; padding: 15px 120px 15px 18px;
+         font: 500 13.5px/1.6 'JetBrains Mono', monospace; color: #e5e5ea; word-break: break-all; }
+  .copy { position: absolute; top: 50%; right: 10px; transform: translateY(-50%); font: 600 13px 'Inter', sans-serif; color: #000; background: var(--text);
+          border: 0; border-radius: 999px; padding: 8px 14px; cursor: pointer; }
+  code { font-family: 'JetBrains Mono', monospace; font-size: .9em; background: rgba(255,255,255,.07); padding: .1em .4em; border-radius: 6px; }
+
+  .limits { margin-top: 44px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .lim { border-top: 1px solid var(--line2); padding-top: 18px; }
+  .lim h3 { font-size: 16px; font-weight: 600; }
+  .lim p { color: var(--dim); font-size: 14.5px; margin-top: 6px; }
+
+  .final { text-align: center; padding: 140px 0 120px; }
+  .final h2 { margin: 0 auto; }
+  .final .cta { justify-content: center; }
+  footer { border-top: 1px solid var(--line); padding: 36px 0 56px; color: var(--dim2); font-size: 13px; line-height: 1.7; }
+  footer a { color: var(--dim); text-decoration: underline; text-decoration-color: var(--line2); text-underline-offset: 3px; }
+  footer a:hover { color: var(--text); }
+  footer .row { display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; margin-bottom: 18px; }
+  footer p + p { margin-top: 10px; }
+
+  .rv { opacity: 0; transform: translateY(24px); transition: opacity .9s var(--ease), transform .9s var(--ease); }
+  .rv.in { opacity: 1; transform: none; }
+  .toast { position: fixed; left: 50%; bottom: 28px; transform: translate(-50%, 10px); opacity: 0; background: var(--text); color: #000; font-weight: 600;
+           font-size: 14px; padding: 10px 18px; border-radius: 999px; transition: opacity .25s, transform .25s var(--ease); pointer-events: none; z-index: 30; }
+  .toast.on { opacity: 1; transform: translate(-50%, 0); }
+  @media (prefers-reduced-motion: reduce) { .rv { opacity: 1; transform: none; transition: none; } html { scroll-behavior: auto; } }
+
+  @media (max-width: 900px) {
+    .hero { grid-template-columns: 1fr; gap: 48px; text-align: center; }
+    .lead, .apps-line { margin-left: auto; margin-right: auto; }
+    .cta { justify-content: center; }
+    .grid3 { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 640px) {
+    :root { --pad: 16px; }
+    nav .links { display: none; }
+    .lang { margin-left: auto; }
+    header { padding-top: 56px; }
+    .apps, .grid3, .limits { grid-template-columns: 1fr; }
+    .step { grid-template-columns: 1fr; gap: 12px; padding: 20px; }
+    .url { padding: 14px 16px 58px; }
+    .copy { top: auto; bottom: 10px; transform: none; }
+    section { padding-top: 80px; }
+  }
+</style>
+</head>
+<body data-lang="ru">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="gh" viewBox="0 0 24 24"><path fill="currentColor" d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.33-1.28-1.69-1.28-1.69-1.05-.71.08-.7.08-.7 1.16.08 1.77 1.2 1.77 1.2 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.78 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.42-2.7 5.4-5.26 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5z"/></symbol>
+  <symbol id="logo" viewBox="0 0 24 24"><path d="M12 2.5l7.5 3v6c0 4.9-3.2 8.7-7.5 10.5-4.3-1.8-7.5-5.6-7.5-10.5v-6z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M8.5 9l7 7M15.5 9l-7 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+</svg>
+
+<nav>
+  <div class="wrap">
+    <a class="logo" href="#top"><svg><use href="#logo"/></svg>RU Apps AdBlock</a>
+    <div class="links">
+      <a href="#apps"><span class="ru">Приложения</span><span class="en">Apps</span></a>
+      <a href="#how"><span class="ru">Как работает</span><span class="en">How it works</span></a>
+      <a href="#install"><span class="ru">Установка</span><span class="en">Install</span></a>
+      <a href="https://github.com/Melidovskiy/ru-apps-adblock">GitHub</a>
+    </div>
+    <div class="lang" role="group" aria-label="Language"><button data-set="ru">RU</button><button data-set="en">EN</button></div>
+  </div>
+</nav>
+
+<header id="top">
+  <div class="wrap hero">
+    <div>
+      <div class="eyebrow rv"><i></i><span class="ru">Модуль для Shadowrocket · iPhone</span><span class="en">A Shadowrocket module · iPhone</span></div>
+      <h1 class="rv"><span class="ru">Покупки.<br><span class="dim">Без рекламы.</span></span><span class="en">Shopping.<br><span class="dim">Without the ads.</span></span></h1>
+      <p class="lead rv">
+        <span class="ru">Убирает рекламу и навязчивые рекомендации из популярных российских приложений. Всё работает на вашем телефоне — данные никуда не уходят.</span>
+        <span class="en">Removes ads and pushy recommendations from popular Russian apps. Everything happens on your phone — your data goes nowhere else.</span>
+      </p>
+      <div class="cta rv">
+        <a class="btn primary" href="#install"><span class="ru">Установить</span><span class="en">Install</span></a>
+        <a class="btn ghost" href="https://github.com/Melidovskiy/ru-apps-adblock"><svg><use href="#gh"/></svg>GitHub</a>
+      </div>
+      <p class="apps-line rv">Ozon · Wildberries · <span class="ru">Яндекс Маркет · Яндекс Go</span><span class="en">Yandex Market · Yandex Go</span> · Avito · <span class="ru">СДЭК · Почта России</span><span class="en">CDEK · Russian Post</span> · AliExpress · DDX Fitness · 2GIS</p>
+    </div>
+
+    <div class="phone-box rv" id="phoneBox">
+      <div class="phone">
+        <div class="compare" id="compare" tabindex="0" role="slider" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50" aria-label="Compare: with ads and without">
+          <div class="island"></div>
+          <!-- after: clean -->
+          <div class="side after" aria-hidden="true"><div class="app">
+            <div class="top"><span>9:41</span><span>●●● ▮</span></div>
+            <div class="search"><i></i><span class="ru">Искать товары</span><span class="en">Search products</span></div>
+            <div class="chips"><span class="ru">Для вас</span><span class="en">For you</span><span class="ru">Одежда</span><span class="en">Clothing</span><span class="ru">Дом</span><span class="en">Home</span><span class="ru">Электроника</span><span class="en">Electronics</span></div>
+            <h5><span class="ru">Ваши заказы</span><span class="en">Your orders</span></h5>
+            <div class="grid2">
+              <div class="card"><div class="ph"></div><div class="p"></div><div class="t"></div><div class="t t2"></div></div>
+              <div class="card"><div class="ph"></div><div class="p"></div><div class="t"></div><div class="t t2"></div></div>
+              <div class="card"><div class="ph"></div><div class="p"></div><div class="t"></div><div class="t t2"></div></div>
+              <div class="card"><div class="ph"></div><div class="p"></div><div class="t"></div><div class="t t2"></div></div>
+              <div class="card"><div class="ph"></div><div class="p"></div><div class="t"></div><div class="t t2"></div></div>
+              <div class="card"><div class="ph"></div><div class="p"></div><div class="t"></div><div class="t t2"></div></div>
+              <div class="card"><div class="ph"></div><div class="p"></div><div class="t"></div><div class="t t2"></div></div>
+              <div class="card"><div class="ph"></div><div class="p"></div><div class="t"></div><div class="t t2"></div></div>
+            </div>
+            <div class="tabbar"><i></i><i></i><i></i><i></i><i></i></div>
+          </div></div>
+          <!-- before: with ads -->
+          <div class="side before" aria-hidden="true"><div class="app">
+            <div class="top"><span>9:41</span><span>●●● ▮</span></div>
+            <div class="search"><i></i><span class="ru">Искать товары</span><span class="en">Search products</span></div>
+            <div class="chips"><span class="ru">Для вас</span><span class="en">For you</span><span class="ru">Одежда</span><span class="en">Clothing</span><span class="ru">Дом</span><span class="en">Home</span><span class="ru">Электроника</span><span class="en">Electronics</span></div>
+            <div class="banner"><span class="ad"><span class="ru">Реклама</span><span class="en">Ad</span></span>
+              <b><span class="ru">Скидки до −90%</span><span class="en">Up to 90% off</span></b><small><span class="ru">Только сегодня</span><span class="en">Today only</span></small></div>
+            <div class="dots"><i></i><i></i><i></i><i></i></div>
+            <h5><span class="ru">Подобрали для вас</span><span class="en">Picked for you</span> <span class="ad">ADS</span></h5>
+            <div class="grid2">
+              <div class="card promo"><div class="ph"></div><span class="ad"><span class="ru">Реклама</span><span class="en">Ad</span></span><div class="p"></div><div class="t"></div><div class="t t2"></div></div>
+              <div class="card"><div class="ph"></div><div class="p"></div><div class="t"></div><div class="t t2"></div></div>
+              <div class="card"><div class="ph"></div><div class="p"></div><div class="t"></div><div class="t t2"></div></div>
+              <div class="card promo2"><div class="ph"></div><span class="ad"><span class="ru">Реклама</span><span class="en">Ad</span></span><div class="p"></div><div class="t"></div><div class="t t2"></div></div>
+              <div class="card"><div class="ph"></div><div class="p"></div><div class="t"></div><div class="t t2"></div></div>
+              <div class="card promo"><div class="ph"></div><span class="ad"><span class="ru">Реклама</span><span class="en">Ad</span></span><div class="p"></div><div class="t"></div><div class="t t2"></div></div>
+            </div>
+            <div class="tabbar"><i></i><i></i><i></i><i></i><i></i></div>
+          </div></div>
+          <span class="tag l" id="tagL"><span class="ru">Без модуля</span><span class="en">Without</span></span>
+          <span class="tag r" id="tagR"><span class="ru">С модулем</span><span class="en">With module</span></span>
+          <div class="divider"></div>
+          <div class="handle"><svg viewBox="0 0 24 24" fill="#111"><path d="M9.5 7 4.5 12l5 5zM14.5 7l5 5-5 5z"/></svg></div>
+        </div>
+      </div>
+      <p class="hint"><span class="ru">Потяните, чтобы сравнить · иллюстрация</span><span class="en">Drag to compare · illustration</span></p>
+    </div>
+  </div>
+</header>
+
+<section id="apps">
+  <div class="wrap">
+    <div class="kicker rv"><span class="ru">Приложения</span><span class="en">Apps</span></div>
+    <h2 class="rv"><span class="ru">Десять приложений.<br><span class="dim">Меньше шума в каждом.</span></span><span class="en">Ten apps.<br><span class="dim">Less noise in each.</span></span></h2>
+    <p class="sub rv"><span class="ru">Везде — карточки и баннеры с обязательной маркировкой рекламы (токен erid, пометка «Реклама»). А ещё — своё для каждого экрана:</span><span class="en">Everywhere: cards and banners with the legally required ad marking (the erid token, the «Реклама» label). And more, screen by screen:</span></p>
+    <div class="apps">
+      <div class="appc rv"><div class="mono">W</div><div><h3>Wildberries</h3><p><span class="ru">Баннеры и слайдеры, рекламная шапка главной, «Selected for you», рекомендации в «Мой WB», промо-карусель в WB Кошельке.</span><span class="en">Banners and sliders, the ad header on the home page, «Selected for you», recommendations in «My WB», the promo carousel in WB Wallet.</span></p></div></div>
+      <div class="appc rv"><div class="mono">O</div><div><h3>Ozon</h3><p><span class="ru">«Подобрали по вашим интересам», «Товары за 1 ₽» и промо-плашка в профиле; «Подобрали для вас» и «Вы смотрели» в избранном и корзине; баннер вкладки банка.</span><span class="en">«Picked for your interests», «Products for 1 ₽» and the promo strip in the profile; «Picked for you» and «You viewed» in favorites and cart; the bank tab banner.</span></p></div></div>
+      <div class="appc rv"><div class="mono"><span class="ru">Я</span><span class="en">Y</span></div><div><h3><span class="ru">Яндекс Маркет</span><span class="en">Yandex Market</span></h3><p><span class="ru">«Достойны сердечка» в избранном, «Может пригодиться» в корзине.</span><span class="en">«Worth a heart» in favorites, «Might come in handy» in the cart.</span></p></div></div>
+      <div class="appc rv"><div class="mono">Go</div><div><h3><span class="ru">Яндекс Go</span><span class="en">Yandex Go</span></h3><p><span class="ru">Лента плиток с товарами и ресторанами на главной, рекламный баннер на экране доставки.</span><span class="en">The tile feed of products and restaurants on the home screen, the ad banner on the delivery screen.</span></p></div></div>
+      <div class="appc rv"><div class="mono">A</div><div><h3>Avito</h3><p><span class="ru">«Похожие объявления» и рекламные места в избранном.</span><span class="en">«Similar listings» and ad slots in favorites.</span></p></div></div>
+      <div class="appc rv"><div class="mono"><span class="ru">С</span><span class="en">C</span></div><div><h3><span class="ru">СДЭК</span><span class="en">CDEK</span></h3><p><span class="ru">Блок «Реклама · Горячие предложения» на главной.</span><span class="en">The «Ad · Hot offers» block on the home screen.</span></p></div></div>
+      <div class="appc rv"><div class="mono"><span class="ru">П</span><span class="en">P</span></div><div><h3><span class="ru">Почта России</span><span class="en">Russian Post</span></h3><p><span class="ru">Карусель рекламных баннеров, места рекламы Яндекса, «Спецпредложения».</span><span class="en">The ad banner carousel, Yandex ad slots, «Special offers».</span></p></div></div>
+      <div class="appc rv"><div class="mono s">Ali</div><div><h3>AliExpress</h3><p><span class="ru">«Звёздные купоны» и витрины брендов на главной, рекламные товары в ленте «Для вас», «Товары от партнеров» и «Вы смотрели» в профиле и корзине.</span><span class="en">«Star coupons» and brand shelves on the home page, sponsored products in «For you», «Partner products» and «You viewed» in the profile and cart.</span></p></div></div>
+      <div class="appc rv"><div class="mono s">DDX</div><div><h3>DDX Fitness</h3><p><span class="ru">Карусель баннеров и сторис на главной.</span><span class="en">The banner carousel and stories on the home screen.</span></p></div></div>
+      <div class="appc rv"><div class="mono">2G</div><div><h3>2GIS</h3><p><span class="ru">Сторис, реклама в «Рекомендуем вам» и рекламный баннер на экране поиска; значок наград «+360 ★».</span><span class="en">Stories, ads in «Recommended for you» and the ad banner on the search screen; the «+360 ★» rewards badge.</span></p></div></div>
+    </div>
+    <p class="plus rv"><span class="ru">Плюс блокируются рекламные и трекинговые сервисы: AppMetrica, Adjust, AppsFlyer, рекламная сеть Яндекса и другие.</span><span class="en">Plus ad and tracking services are blocked: AppMetrica, Adjust, AppsFlyer, Yandex's ad network and others.</span></p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="wrap">
+    <div class="kicker rv"><span class="ru">Как это работает</span><span class="en">How it works</span></div>
+    <h2 class="rv"><span class="ru">Всё на телефоне.<br><span class="dim">Ничего лишнего.</span></span><span class="en">All on your phone.<br><span class="dim">Nothing more.</span></span></h2>
+    <div class="grid3">
+      <div class="feat rv">
+        <svg viewBox="0 0 24 24"><rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M10 18.5h4"/></svg>
+        <h3><span class="ru">Только на устройстве</span><span class="en">On the device only</span></h3>
+        <p><span class="ru">Скрипт получает ответ сервера приложения, вырезает рекламный блок и отдаёт остальное. Третьим лицам ничего не отправляется.</span><span class="en">The script takes the app's server response, cuts the ad block out and passes on the rest. Nothing goes to third parties.</span></p>
+      </div>
+      <div class="feat rv">
+        <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/><path d="M17 16l3 3m0-3l-3 3"/></svg>
+        <h3><span class="ru">Точечно</span><span class="en">Precise</span></h3>
+        <p><span class="ru">Реклама находится по обязательной маркировке, а рекомендации — по названиям блоков. Ответ без рекламы не меняется вовсе.</span><span class="en">Ads are found by their legally required marking, recommendations by block names. A response without ads isn't touched at all.</span></p>
+      </div>
+      <div class="feat rv">
+        <svg viewBox="0 0 24 24"><path d="M12 3l7 3v5.5c0 4.4-3 8-7 9.5-4-1.5-7-5.1-7-9.5V6z"/><path d="M9 12l2 2 4-4"/></svg>
+        <h3><span class="ru">Аккуратно</span><span class="en">Careful</span></h3>
+        <p><span class="ru">Расшифровываются только адреса из списка модуля. Банки, Госуслуги и мессенджеры в него не входят.</span><span class="en">Only the addresses in the module's list are decrypted. Banks, Gosuslugi and messengers aren't on it.</span></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="install">
+  <div class="wrap">
+    <div class="kicker rv"><span class="ru">Установка</span><span class="en">Install</span></div>
+    <h2 class="rv"><span class="ru">Три шага<br><span class="dim">и пара минут.</span></span><span class="en">Three steps,<br><span class="dim">a couple of minutes.</span></span></h2>
+    <p class="sub rv"><span class="ru">Нужен iPhone с установленным <a href="https://apps.apple.com/app/shadowrocket/id932747118" style="text-decoration:underline">Shadowrocket</a>.</span><span class="en">You'll need an iPhone with <a href="https://apps.apple.com/app/shadowrocket/id932747118" style="text-decoration:underline">Shadowrocket</a> installed.</span></p>
+    <div class="steps">
+      <div class="step rv"><div>
+        <h3><span class="ru">Включите расшифровку HTTPS</span><span class="en">Turn on HTTPS decryption</span></h3>
+        <ol class="ru">
+          <li>Вкладка с конфигами → <b>ⓘ</b> справа от вашего конфига.</li>
+          <li>«Расшифровка HTTPS» → «Сертификат»: сгенерируйте и установите новый CA-сертификат.</li>
+          <li>Настройки iOS → Основные → VPN и управление устройством → установите профиль.</li>
+          <li>Настройки iOS → Основные → Об этом устройстве → Доверие сертификатам → включите.</li>
+          <li>Вернитесь в Shadowrocket и включите «Расшифровку HTTPS» в том же конфиге.</li>
+        </ol>
+        <ol class="en">
+          <li>Config tab → <b>ⓘ</b> next to your config.</li>
+          <li>HTTPS Decryption → Certificate: generate and install a new CA certificate.</li>
+          <li>iOS Settings → General → VPN &amp; Device Management → install the profile.</li>
+          <li>iOS Settings → General → About → Certificate Trust Settings → turn it on.</li>
+          <li>Back in Shadowrocket, turn on HTTPS Decryption in the same config.</li>
+        </ol>
+      </div></div>
+      <div class="step rv"><div>
+        <h3><span class="ru">Добавьте модуль</span><span class="en">Add the module</span></h3>
+        <p><span class="ru">Вкладка с конфигами → «Модули» → <b>＋</b> → вставьте ссылку и проверьте, что модуль включён.</span><span class="en">Config tab → Modules → <b>＋</b> → paste the link and make sure the module is on.</span></p>
+        <div class="url" id="modUrl">https://raw.githubusercontent.com/Melidovskiy/ru-apps-adblock/main/RU-Apps-AdBlock.sgmodule<button class="copy" data-copy="#modUrl"><span class="ru">Копировать</span><span class="en">Copy</span></button></div>
+      </div></div>
+      <div class="step rv"><div>
+        <h3><span class="ru">Перезапустите приложения</span><span class="en">Restart the apps</span></h3>
+        <p><span class="ru">Смахните их из списка открытых и откройте снова. Часть правил Wildberries применяется со следующего запуска.</span><span class="en">Swipe them out of the app switcher and open them again. Some Wildberries rules apply from the next launch.</span></p>
+      </div></div>
+    </div>
+
+    <div class="limits">
+      <div class="lim rv"><h3><span class="ru">Сертификат — ваш ключ</span><span class="en">The certificate is your key</span></h3><p><span class="ru">Не делитесь экспортом конфигурации Shadowrocket: в нём может быть сертификат с закрытым ключом.</span><span class="en">Don't share a Shadowrocket config export: it may contain the certificate with its private key.</span></p></div>
+      <div class="lim rv"><h3><span class="ru">Если что-то сломалось</span><span class="en">If something breaks</span></h3><p><span class="ru">Выключите модуль и перезапустите приложение. Помогло — <a href="https://github.com/Melidovskiy/ru-apps-adblock/issues/new/choose" style="text-decoration:underline">сообщите о проблеме</a>.</span><span class="en">Turn the module off and restart the app. If that helps, <a href="https://github.com/Melidovskiy/ru-apps-adblock/issues/new/choose" style="text-decoration:underline">report it</a>.</span></p></div>
+      <div class="lim rv"><h3><span class="ru">Плашки «Включён VPN»</span><span class="en">«VPN is on» notices</span></h3><p><span class="ru">Их рисуют сами приложения (Госуслуги, банки), модуль их не уберёт.</span><span class="en">The apps draw them themselves (Gosuslugi, banks); the module can't remove them.</span></p></div>
+      <div class="lim rv"><h3><span class="ru">Обновления приложений</span><span class="en">App updates</span></h3><p><span class="ru">После обновления что-то может снова появиться, пока правила не обновят. Модуль обновляется по той же ссылке.</span><span class="en">After an app update something may come back until the rules catch up. The module updates from the same link.</span></p></div>
+    </div>
+  </div>
+</section>
+
+<div class="final">
+  <div class="wrap">
+    <h2 class="rv"><span class="ru">Меньше рекламы.<br><span class="dim">Больше спокойствия.</span></span><span class="en">Fewer ads.<br><span class="dim">More calm.</span></span></h2>
+    <div class="cta rv">
+      <a class="btn primary" href="#install"><span class="ru">Установить</span><span class="en">Install</span></a>
+      <a class="btn ghost" href="https://github.com/Melidovskiy/ru-apps-adblock"><svg><use href="#gh"/></svg>GitHub</a>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="row">
+      <span class="logo" style="color:var(--text)"><svg><use href="#logo"/></svg>RU Apps AdBlock</span>
+      <span><a href="https://github.com/Melidovskiy/ru-apps-adblock">GitHub</a> · <a href="https://github.com/Melidovskiy/ru-apps-adblock/blob/main/LICENSE">MIT</a></span>
+    </div>
+    <p><span class="ru">Независимый проект, не связан с перечисленными сервисами. Названия и товарные знаки принадлежат их правообладателям и используются только для указания совместимости. Фильтрация выполняется на устройстве пользователя и не изменяет данные на серверах сервисов. Телефон в сравнении — иллюстрация.</span><span class="en">An independent project, not affiliated with the services listed. Names and trademarks belong to their owners and are used only to indicate compatibility. Filtering happens on the user's device and doesn't change any data on the services' servers. The phone in the comparison is an illustration.</span></p>
+    <p><span class="ru">Проект предоставляется «как есть». Использование Shadowrocket, расшифровки HTTPS и сторонних модулей может регулироваться условиями соответствующих сервисов; пользователь сам отвечает за их соблюдение.</span><span class="en">Provided as is. Using Shadowrocket, HTTPS decryption and third-party modules may be subject to the terms of the services involved; users are responsible for following them.</span></p>
+  </div>
+</footer>
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  var saved = null;
+  try { saved = localStorage.getItem('lang'); } catch (e) {}
+  var lang = saved || ((navigator.language || '').toLowerCase().indexOf('ru') === 0 || !navigator.language ? 'ru' : 'en');
+  function setLang(l) {
+    lang = l;
+    document.body.setAttribute('data-lang', l);
+    document.documentElement.lang = l;
+    document.title = l === 'ru' ? 'RU Apps AdBlock — модуль Shadowrocket без рекламы в российских приложениях'
+                                : 'RU Apps AdBlock — a Shadowrocket module against ads in Russian apps';
+    [].forEach.call(document.querySelectorAll('.lang button'), function (b) { b.classList.toggle('on', b.getAttribute('data-set') === l); });
+  }
+  setLang(lang);
+  [].forEach.call(document.querySelectorAll('.lang button'), function (b) {
+    b.addEventListener('click', function () { setLang(b.getAttribute('data-set')); try { localStorage.setItem('lang', lang); } catch (e) {} });
+  });
+
+  // Before/after slider: drag, click or arrow keys; a short sweep when it first comes into view.
+  var box = document.getElementById('compare'), tagL = document.getElementById('tagL'), tagR = document.getElementById('tagR');
+  var pos = 50, dragging = false, touched = false;
+  function set(p) {
+    pos = Math.max(0, Math.min(100, p));
+    box.style.setProperty('--x', pos + '%');
+    box.setAttribute('aria-valuenow', Math.round(pos));
+    tagL.style.opacity = pos < 36 ? 0 : 1;
+    tagR.style.opacity = pos > 64 ? 0 : 1;
+  }
+  function fromEvent(e) { var r = box.getBoundingClientRect(); set((e.clientX - r.left) / r.width * 100); }
+  box.addEventListener('pointerdown', function (e) {
+    touched = true; dragging = true; box.classList.add('drag');
+    if (box.setPointerCapture) box.setPointerCapture(e.pointerId);
+    fromEvent(e);
+  });
+  box.addEventListener('pointermove', function (e) { if (dragging) fromEvent(e); });
+  function stop() { dragging = false; box.classList.remove('drag'); }
+  box.addEventListener('pointerup', stop);
+  box.addEventListener('pointercancel', stop);
+  box.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { touched = true; e.preventDefault(); set(pos + (e.key === 'ArrowLeft' ? -5 : 5)); }
+  });
+  set(50);
+  var still = /[?&]x=(\d+)/.exec(location.search);   // ?x=30: a still frame (for screenshots)
+  if (still) { touched = true; set(+still[1]); }
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function sweep() {
+    if (reduce || touched) return;
+    var t0 = null, keys = [[0, 50], [0.32, 76], [0.72, 24], [1, 50]], dur = 2600;
+    function frame(t) {
+      if (touched) return;
+      if (t0 === null) t0 = t;
+      var k = Math.min(1, (t - t0) / dur), i = 1;
+      while (i < keys.length - 1 && k > keys[i][0]) i++;
+      var a = keys[i - 1], b = keys[i], u = (k - a[0]) / (b[0] - a[0]);
+      u = u < .5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2;
+      set(a[1] + (b[1] - a[1]) * u);
+      if (k < 1) requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  var io = 'IntersectionObserver' in window ? new IntersectionObserver(function (es) {
+    es.forEach(function (en) {
+      if (!en.isIntersecting) return;
+      en.target.classList.add('in');
+      if (en.target.id === 'phoneBox') setTimeout(sweep, 600);
+      io.unobserve(en.target);
+    });
+  }, { threshold: .15 }) : null;
+  [].forEach.call(document.querySelectorAll('.rv'), function (el) { io ? io.observe(el) : el.classList.add('in'); });
+  if (!io) setTimeout(sweep, 800);
+
+  var toast = document.getElementById('toast');
+  [].forEach.call(document.querySelectorAll('.copy'), function (b) {
+    b.addEventListener('click', function () {
+      var el = document.querySelector(b.getAttribute('data-copy'));
+      var text = el.firstChild.textContent.trim();
+      var done = function () {
+        toast.textContent = lang === 'ru' ? 'Ссылка скопирована' : 'Link copied';
+        toast.classList.add('on'); clearTimeout(done.t); done.t = setTimeout(function () { toast.classList.remove('on'); }, 1600);
+      };
+      if (navigator.clipboard) navigator.clipboard.writeText(text).then(done, function () {}); else done();
+    });
+  });
+})();
+</script>
+</body>
+</html>
