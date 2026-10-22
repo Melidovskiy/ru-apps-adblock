@@ -1,5 +1,5 @@
 /*
- * RU Apps AdBlock v3.23 — фильтр ответов для Shadowrocket (type=http-response, requires-body=true)
+ * RU Apps AdBlock v3.24 — фильтр ответов для Shadowrocket (type=http-response, requires-body=true)
  * Ozon / Wildberries / Яндекс Маркет / Яндекс Go / Avito / СДЭК / Почта России / AliExpress / DDX Fitness / 2GIS
  *
  * Как находит рекламу: по закону о маркировке (38-ФЗ, ОРД) каждое объявление несёт токен erid
@@ -92,6 +92,9 @@
  * v3.23: 2GIS — «Рекомендуем вам»: плитки подборок гида снова остаются, убираются только рекламные. Без подборок
  *       приложение отбрасывало весь раздел и строило свой запасной набор рубрик («Поесть», «Шины»…) с рекламной
  *       плиткой из уже скачанной рекламной базы («Лужники, аквапарк · Ad»).
+ * v3.24: 2GIS — в «Рекомендуем вам» остаются только рубрики («Places to stay», «Restaurants», «Discounts», «All
+ *       categories»…): реклама, подборки и карточки мест убираются, а оставшиеся плитки раскладываются поровну в две
+ *       колонки — неровные колонки приложение отбрасывало (см. v3.23).
  *
  * Страховки: тело не меняется, если ничего не найдено; подъём вверх не выше блока в 20% ответа;
  * один удаляемый элемент не больше 40% ответа; если суммарно удаляется больше 60% — ответ как есть.
@@ -236,9 +239,7 @@
 
   // ───────── 2GIS ─────────
   // Экран поиска: карусель сторис (stories.api …/3.0/stories — весь список: «Эволюция купальника», «Где лучше открыть
-  // бизнес?»…), рекламные плитки в разделе «Рекомендуем вам» (tips.api …/api/1.0/tips: плитки с ads_id — «Дымзавод · Ad»,
-  // «Зелёный движ»; подборки, рубрики и места остаются: пустой раздел или раздел без подборок приложение не принимает
-  // и показывает сохранённую копию или свой запасной набор рубрик с рекламной плиткой из рекламной базы)
+  // бизнес?»…), раздел «Рекомендуем вам» (tips.api …/api/1.0/tips) — только рубрики, см. gisRubricsOnly,
   // и рекламный баннер под ним (advisor.api …/api/3.0/ads/advise/… — banners с isAds/erid, «Реклама ·
   // ПАО Сбербанк…»). Остальное (и схема ответа) — как было. Те же адреса есть на зеркалах *.2giskz.app, приложение ходит
   // на оба. Задания и награды, «Rate places» — запросы отклоняет модуль (см. [Rule]). Другие ответы 2GIS — как есть.
@@ -252,6 +253,52 @@
     var c = t && typeof t === 'object' ? t.content : null;
     return !!c && typeof c === 'object' && (c.ads_id != null || c.auction_id != null);
   }
+  // раскладка «Рекомендуем вам» для журнала: колонки, тип, высота, название
+  function gisTipsSum(d) {
+    return (d.template || '?') + ' ' + d.columns.map(function (col, i) {
+      return 'col' + i + ': ' + (Array.isArray(col) ? col.map(function (t) {
+        var c = (t && t.content) || {};
+        return (t && t.type || '?') + ' h=' + (t && t.height) + (c.title ? ' «' + String(c.title).slice(0, 24) + '»' : '') + (gisAdTile(t) ? ' AD' : '');
+      }).join(', ') : '?');
+    }).join(' || ');
+  }
+  // «Рекомендуем вам» — только рубрики (type metarubric) и «All categories»: реклама, подборки (public_collection) и
+  // карточки мест (card) убираются. Колонки должны остаться ровными: неровный или пустой раздел приложение отбрасывает и
+  // строит свой запасной набор — с рекламной плиткой из уже скачанной рекламной базы. Поэтому оставшиеся плитки
+  // раскладываются поровну в две колонки (при нечётном числе одна рубрика убирается), «All categories» — последней.
+  // Если рубрик меньше двух или раскладка другая — убирается только реклама. Возвращает true, если раздел изменён.
+  function gisRubricsOnly(d, gr) {
+    if (d.columns.length !== 2) return false;
+    var rub = [], tail = [], gone = [];
+    for (var ci = 0; ci < 2; ci++) {
+      var col = d.columns[ci];
+      if (!Array.isArray(col)) return false;
+      for (var ti = 0; ti < col.length; ti++) {
+        var t = col[ti], c = (t && t.content) || {};
+        var where = '.columns[' + ci + '][' + ti + ']' + (c.title ? ' «' + String(c.title).slice(0, 30) + '»' : '');
+        if (gisAdTile(t) || (t && (t.type === 'public_collection' || t.type === 'card'))) gone.push(where);
+        else if (t && t.type === 'metarubric') rub.push(t);
+        else tail.push(t);
+      }
+    }
+    if (rub.length < 2 || !gone.length) return false;
+    var h = function (t) { return (t && +t.height) || 1; };
+    var tiles = rub.concat(tail), same = true;
+    for (var i = 1; i < tiles.length; i++) if (h(tiles[i]) !== h(tiles[0])) same = false;
+    if (same && tiles.length % 2) {
+      var dropped = rub.pop();
+      gone.push('ровные колонки «' + String((dropped.content || {}).title || '?').slice(0, 30) + '»');
+      tiles = rub.concat(tail);
+    }
+    var cols = [[], []], sum = [0, 0];
+    for (var k = 0; k < tiles.length; k++) {
+      var to = same ? k % 2 : (sum[0] <= sum[1] ? 0 : 1);
+      cols[to].push(tiles[k]); sum[to] += h(tiles[k]);
+    }
+    d.columns = cols;
+    gr.n += gone.length; gr.at = gr.at.concat(gone);
+    return true;
+  }
   if (IS_2GIS) {
     var gr = { n: 0, at: [] };
     var gemp = function (o, k, p) {
@@ -259,7 +306,9 @@
     };
     if (GIS_RULE === 'stories') { if (Array.isArray(data) && data.length) { gr.n = data.length; gr.at.push('[' + data.length + ']'); data = []; } }
     else if (GIS_RULE === 'tips' && data && Array.isArray(data.columns)) {
-      for (var gc = 0; gc < data.columns.length; gc++) {
+      if (DEBUG && data.columns.length === 2) log('2GIS tips before: ' + gisTipsSum(data));
+      if (gisRubricsOnly(data, gr)) { if (DEBUG) log('2GIS tips after: ' + gisTipsSum(data)); }
+      else for (var gc = 0; gc < data.columns.length; gc++) {
         var col = data.columns[gc];
         if (!Array.isArray(col)) continue;
         var keep = [];

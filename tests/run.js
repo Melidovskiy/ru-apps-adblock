@@ -410,8 +410,22 @@ const tips = { dashboard_id: 'd1', template: 'two_columns', columns: [
    { type: 'metarubric', height: 1, content: { metarubric_id: 9, title: 'Places to stay', subtitle: '5 021 places' }, action: { type: 'search_by_metarubric', value: '9' } }],
   [{ type: 'ad', height: 1, content: { title: 'Дымзавод', owner_id: 70000001234567890, ads_id: 'a1', ads_alg: 2, auction_id: 'au', position: 1 },
      action: { type: 'open_firm', value: '70000001234567890' } }]] };
-t('G3 «Рекомендуем вам»: убираются только рекламные плитки, подборки и рубрики остаются', { url: 'https://tips.api.2gis.ru/api/1.0/tips?lang=ru', body: tips },
+t('G3 «Рекомендуем вам»: рубрик меньше двух — убирается только реклама', { url: 'https://tips.api.2gis.ru/api/1.0/tips?lang=ru', body: tips },
   (p) => { const want = clone(tips); want.columns[1] = []; eq(p, want); });
+const T = (type, h, title, extra) => ({ type: type, height: h, content: Object.assign({ title: title }, extra || {}), action: { type: 'x', value: '1' } });
+const dash = { dashboard_id: 'd2', template: 'two_columns', columns: [
+  [T('public_collection', 2, 'Парфюмы про Россию'), T('metarubric', 1, 'Places to stay', { metarubric_id: 1 }), T('metarubric', 1, 'Restaurants', { metarubric_id: 2 }),
+   T('ad', 1, 'Britva', { ads_id: 'a', auction_id: 'b' }), T('public_collection', 2, 'Расслабиться вдвоём')],
+  [T('ad', 1, 'Дымзавод', { ads_id: 'c' }), T('metarubric', 1, 'Discounts', { metarubric_id: 3 }), T('card', 2, 'Batono Jonny', { object_id: 'o' }),
+   T('metarubric', 1, 'Bars', { metarubric_id: 4 }), T('metarubric', 1, 'Cafe', { metarubric_id: 5 }), T('all_rubrics', 1, 'All categories')]] };
+t('G3b «Рекомендуем вам»: остаются только рубрики, поровну в две колонки, «All categories» — последней', { url: 'https://tips.api.2gis.ru/api/1.0/tips?lang=ru', body: dash },
+  (p) => {
+    const titles = p.columns.map((c) => c.map((x) => x.content.title));
+    eq(titles, [['Places to stay', 'Discounts', 'Cafe'], ['Restaurants', 'Bars', 'All categories']]);
+    eq(p.dashboard_id, 'd2'); eq(p.template, 'two_columns');
+  });
+t('G3c нечётное число плиток: одна рубрика убирается, колонки ровные', { url: 'https://tips.api.2gis.ru/api/1.0/tips', body: (() => { const x = clone(dash); x.columns[1].splice(4, 1); return x; })() },
+  (p) => { eq(p.columns.map((c) => c.length), [2, 2]); eq(p.columns[1][1].content.title, 'All categories'); });
 const ads = { banners: [{ bannerId: 'b1', adsId: 'a', isAds: true, erid: ['2Vtzqx'], legalName: 'ПАО Сбербанк',
   content: { text: 'Отвечайте на вопросы и получайте сундуки с сюрпризами', options: { actions: [{ type: 'link', caption: 'Городской квиз' }], images: ['https://x/i.png'] } } }] };
 t('G4 рекламный баннер (advisor …/ads/advise/…) -> пустой список', { url: 'https://advisor.api.2gis.ru/api/3.0/ads/advise/gta?x=1', body: ads },
