@@ -1,6 +1,6 @@
 /*
- * RU Apps AdBlock v3.26 — фильтр ответов для Shadowrocket (type=http-response, requires-body=true)
- * Ozon / Wildberries / Яндекс Маркет / Яндекс Go / Avito / СДЭК / Почта России / AliExpress / DDX Fitness / 2GIS /
+ * RU Apps AdBlock v3.27 — фильтр ответов для Shadowrocket (type=http-response, requires-body=true)
+ * Ozon / Wildberries / Яндекс Маркет / Яндекс Go / Яндекс Еда / Avito / СДЭК / Почта России / AliExpress / DDX Fitness / 2GIS /
  * Letterboxd
  *
  * Как находит рекламу: по закону о маркировке (38-ФЗ, ОРД) каждое объявление несёт токен erid
@@ -100,6 +100,10 @@
  *       hideAds / hideAdsInContent -> true, show…Ads -> false. Статус участника и платные функции не трогаются.
  * v3.26: Avito — баннер «Реклама» под объявлением: места для рекламы в карточке (…/items/<id>/banners) -> пустые.
  *       AliExpress, страница заказа — «Одна цена» и «Подобрали для вас» (заголовки и лента рекомендаций под заказом).
+ * v3.27: DDX Fitness — подарок за вход в окне QR, «Программа от ИИ-тренера» на главной, «ИИ Программа тренировок» в
+ *       профиле, окно-предложение DDX Action и баннеры в чате: переключатели в service/mobile_config -> выключены.
+ *       Яндекс Еда, главная: окно с рекламой при запуске, карусель баннеров «Advertisement» и рекламные баннеры между
+ *       ресторанами (блоки madv_* в layout-constructor/…/layout).
  *
  * Страховки: тело не меняется, если ничего не найдено; подъём вверх не выше блока в 20% ответа;
  * один удаляемый элемент не больше 40% ответа; если суммарно удаляется больше 60% — ответ как есть.
@@ -205,6 +209,21 @@
             if (sr.n) { ob = restoreBig(JSON.stringify(sr.data)); note = ' | stories emptied ' + sr.at.join(','); }
           } catch (e) { note = ' | stories: not json'; }
         }
+        // Настройки приложения (service/mobile_config, data[] с переключателями): подарок за вход в окне QR (Flocktory),
+        // карточка ИИ-тренера на главной, ИИ-программа тренировок в профиле, окно-предложение DDX Action и баннеры в чате
+        // -> выключены. Остальные переключатели — как есть.
+        if (/^\/service\/mobile_config\/?$/.test(path) && st === 200) {
+          try {
+            var mc = JSON.parse(protectBig(rb)), mcOff = [];
+            var MC_OFF = /^(is_flocktory_qr_banner_enabled|superapp_main_page_is_ai_trainer_enabled|training_plans_show|training_plans_show_release|is_action_upsale_popup_available|is_chat_banners_enabled|is_chat_banners_enabled_v2)$/;
+            var mcl = mc && mc.data ? (Array.isArray(mc.data) ? mc.data : [mc.data]) : [];
+            for (var mi = 0; mi < mcl.length; mi++) {
+              var mo = mcl[mi];
+              if (mo && typeof mo === 'object') for (var mk in mo) if (MC_OFF.test(mk) && mo[mk] === true) { mo[mk] = false; mcOff.push(mk); }
+            }
+            if (mcOff.length) { ob = restoreBig(JSON.stringify(mc)); note += ' | switched off ' + mcOff.join(','); }
+          } catch (e) { note += ' | config: not json'; }
+        }
         if (DEBUG) log('relay ' + st + ' ' + rb.length + 'b ' + (new Date().getTime() - t0) + 'ms' + note);
         $done({ response: { status: st, headers: oh, body: ob } });
       });
@@ -240,6 +259,42 @@
 
   var data;
   try { data = JSON.parse(protectBig(body)); } catch (e) { return pass('json parse error'); }
+
+  // Яндекс Еда, главная (eda.yandex.ru/eats/v1/layout-constructor/v1/layout — вся главная одним ответом: data.<тип блока>[]
+  // и порядок блоков в layout[]). Реклама — блоки data.madv_* (madv_hero_banners — карусель баннеров «Advertisement» и
+  // баннеры между ресторанами, madv_popup_communications — окно с рекламой при запуске) и баннеры с данными рекламодателя
+  // (ord) в других блоках. Они убираются вместе со своими местами в layout; остальная главная и общий поиск рекламы — нет.
+  if (/^eda\.yandex\.ru$/.test(host) && /^\/eats\/v\d+\/layout-constructor\/v\d+\/layout$/.test(path) && data && data.data &&
+      typeof data.data === 'object') {
+    var eGone = [], eIds = {}, eLay = 0;
+    for (var ek in data.data) {
+      var ev = data.data[ek];
+      if (!Array.isArray(ev)) continue;
+      if (/^madv_/.test(ek)) {
+        if (ev.length) {
+          for (var ej = 0; ej < ev.length; ej++) if (ev[ej] && ev[ej].id != null) eIds[ev[ej].id] = 1;
+          eGone.push(ek + '[' + ev.length + ']'); data.data[ek] = [];
+        }
+        continue;
+      }
+      for (var bi = ev.length - 1; bi >= 0; bi--) {
+        var blk = ev[bi], bl = blk && blk.payload && blk.payload.banners;
+        if (!Array.isArray(bl)) continue;
+        var keepB = bl.filter(function (x) { return !(x && (x.ord || (x.meta && x.meta.ord) || x.advertisement)); });
+        if (keepB.length === bl.length) continue;
+        eGone.push(ek + '.banners×' + (bl.length - keepB.length));
+        if (keepB.length) blk.payload.banners = keepB;
+        else { if (blk.id != null) eIds[blk.id] = 1; ev.splice(bi, 1); }
+      }
+    }
+    if (Array.isArray(data.layout)) for (var li = data.layout.length - 1; li >= 0; li--) {
+      var le = data.layout[li], lt = le && String(le.type || le.template_name || '');
+      if (le && typeof le === 'object' && ((le.id != null && eIds[le.id]) || /^madv_/.test(lt))) { data.layout.splice(li, 1); eLay++; }
+    }
+    if (DEBUG) log('Yandex Eats home: removed ' + (eGone.join(', ') || '-') + (eLay ? ' | layout entries ' + eLay : ''));
+    if (!eGone.length) return $done({});
+    return $done({ body: restoreBig(JSON.stringify(data)) });
+  }
 
   // Avito, карточка объявления: места для рекламы приходят отдельным запросом …/items/<id>/banners
   // (success.positions.<место>[], например item_btf_ios — баннер «Реклама» под объявлением; сам баннер приложение берёт
