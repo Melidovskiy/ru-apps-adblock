@@ -113,12 +113,11 @@
  *       модуль его больше не расшифровывает (правила для экранов Ozon ниже остаются, но не вызываются). AliExpress —
  *       «Хиты распродажи» (HomepageProfitBannerCommon) на главной и в профиле, «Рекомендуем вам» в избранном. Почта —
  *       промо-карусели главной (dynamicBlocks: «Выгодно на почте», «Почта маркет», «Эхо Великой Победы», без заголовка).
- *       Для разбора: Яндекс Маркет пишет в журнал надписи секций; 2GIS — ответы отзывов, datafeedback и
- *       advisor …/ads/sync (откуда «Rate places» и реклама), без изменений. WB: «You may like these items» в корзине
+ *       Для разбора: Яндекс Маркет пишет в журнал надписи секций. 2GIS: «Rate places» больше не убирается. WB: «You may like these items» в корзине
  *       (recom/personal/v9/search, короткий адрес). AliExpress: список заказов, карусели баннеров вверху заказов
  *       и избранного (Fusion…BannerSectionV2), «Распродажа» в «Ниже рынка», «Рекомендуем вам» на экране монет.
  *       Почта: промо-значки («Подарки», «Лотереи», «₽абота», «Гороскоп», «Игры») и карусели «Благотворительность»,
- *       «Гороскоп», «Игры». 2GIS: «Мои места» (myplaces) — в журнал только устройство ответа.
+ *       «Гороскоп», «Игры». AliExpress, экран монет: товары в data.products / productsV2.
  *
  * Страховки: тело не меняется, если ничего не найдено; подъём вверх не выше блока в 20% ответа;
  * один удаляемый элемент не больше 40% ответа; если суммарно удаляется больше 60% — ответ как есть.
@@ -410,9 +409,8 @@
   // и рекламный баннер под ним (advisor.api …/api/3.0/ads/advise/… — banners с isAds/erid, «Реклама ·
   // ПАО Сбербанк…»). Остальное (и схема ответа) — как было. Те же адреса есть на зеркалах *.2giskz.app, приложение ходит
   // на оба. Задания и награды, «Rate places» — запросы отклоняет модуль (см. [Rule]). Другие ответы 2GIS — как есть.
-  // С v3.30 «Rate places» вернулся без запросов к checkin: ответы отзывов (public-api.reviews) и datafeedback, а также
-  // advisor …/ads/sync (откуда, похоже, берётся реклама при медленном ответе advise) расшифровываются только для
-  // журнала (argument=debug) — по нему будет видно, откуда блоки; сами ответы не меняются.
+  // С ноября 2026 «Rate places» приходит не от checkin, и модуль его больше не убирает (это не реклама: карточка
+  // закрывается одним нажатием). Ответы 2GIS без правила в журнале (argument=debug) — ключи и первые надписи.
   var IS_2GIS = /(^|\.)2gis\.(ru|com)$|(^|\.)2giskz\.app$/.test(host);
   var GIS_RULE = !IS_2GIS ? '' :
     /^stories(\.api\.2gis\.ru|-api\.2giskz\.app)$/.test(host) && /^\/\d+\.\d+\/stories\/?$/.test(path) ? 'stories' :
@@ -504,16 +502,6 @@
         }
       })(data, 0);
       log('2GIS probe size=' + body.length + ' top=' + (Array.isArray(data) ? '[' + data.length + ']' : Object.keys(data).slice(0, 12).join('/')) + ' | ' + (gtx.join(' ; ') || '-'));
-      // «Мои места» (откуда, похоже, «Rate places» с счётчиком): только устройство ответа — ключи и длины списков, без значений
-      if (/^myplaces/.test(host)) {
-        var gsh = [];
-        (function gsWalk(o, pth, dd) {
-          if (dd > 5 || gsh.length >= 30 || !o || typeof o !== 'object') return;
-          if (Array.isArray(o)) { gsh.push(pth + '[' + o.length + ']'); if (o.length) gsWalk(o[0], pth + '[0]', dd + 1); return; }
-          for (var sk2 in o) { var sv = o[sk2]; if (sv && typeof sv === 'object') gsWalk(sv, pth + '.' + sk2, dd + 1); else gsh.push(pth + '.' + sk2 + ':' + typeof sv); }
-        })(data, '', 0);
-        log('2GIS myplaces shape: ' + gsh.join(' '));
-      }
     }
     if (!gr.n) return $done({});
     return $done({ body: restoreBig(JSON.stringify(data)) });
@@ -1067,7 +1055,16 @@
   // AliExpress: полка «Товары от партнеров» (p4p-only-shelf — только оплаченные показы), рекомендации корзины и лента
   // «Подобрали для вас» под заказом (order-recommend), «Рекомендуем вам» на экране монет (web/recommend/loyalty-cashback) -> пусто
   if (IS_ALI && DEBUG && /\/recommend\/loyalty-cashback$/.test(path)) log('AE coins recs: ' + (data && typeof data === 'object' ? Object.keys(data).join('/') + (data.data && typeof data.data === 'object' ? ' data=' + Object.keys(data.data).slice(0, 10).join('/') : '') : typeof data));
-  if (IS_ALI && /\/recommend\/(v\d+\/p4p-only-shelf|shopping-cart\/v\d+|order-recommend|loyalty-cashback)$/.test(path) && data && data.data &&
+  // экран монет: товары в data.products / data.productsV2 (не items); списки -> пустые, следующая страница не запрашивается
+  if (IS_ALI && /\/recommend\/loyalty-cashback$/.test(path) && data && data.data && typeof data.data === 'object') {
+    ['products', 'productsV2'].forEach(function (lk) {
+      var la = data.data[lk];
+      if (Array.isArray(la) && la.length) { stats.blockBytes += size(la); stats.removed += la.length; stats.reasons['ae-coins-recs'] = (stats.reasons['ae-coins-recs'] || 0) + la.length; data.data[lk] = []; }
+    });
+    var pi = data.data.pageInfo;
+    if (stats.reasons['ae-coins-recs'] && pi && typeof pi === 'object') for (var pk in pi) if (/^has(Next|More)/i.test(pk) && pi[pk] === true) pi[pk] = false;
+  }
+  if (IS_ALI && /\/recommend\/(v\d+\/p4p-only-shelf|shopping-cart\/v\d+|order-recommend)$/.test(path) && data && data.data &&
       Array.isArray(data.data.items) && data.data.items.length) {
     stats.blockBytes += size(data.data.items); stats.removed += data.data.items.length;
     stats.reasons['ae-recs-empty'] = data.data.items.length; data.data.items = [];

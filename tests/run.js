@@ -103,11 +103,11 @@ tx('M7 маршрутизация адресов: что идёт в скрип�
   const rw = MOD.split('\n').filter((l) => /^\^/.test(l)).map((l) => new RegExp(l.slice(0, l.lastIndexOf(' - '))));
   const inScript = ['https://wapi.aliexpress.ru/mobile-layout/home/fusion', 'https://api.ozon.ru/api/composer-api.bx/page/json/v2?url=/my',
     'https://finance.wb.ru/api/offers-api/v1/product/offers', 'https://mobileapi.ddxfitness.ru/stories?x=1', 'https://tc.mobile.yandex.net/4.0/urbanads/sdk?',
-    'https://stories.api.2gis.ru/3.0/stories?locale=ru_RU', 'https://tips-api.2giskz.app/api/1.0/tips?x=1', 'https://advisor.api.2gis.ru/api/3.0/ads/advise/gta?x', 'https://advisor.api.2gis.ru/api/3.0/ads/sync',
+    'https://stories.api.2gis.ru/3.0/stories?locale=ru_RU', 'https://tips-api.2giskz.app/api/1.0/tips?x=1', 'https://advisor.api.2gis.ru/api/3.0/ads/advise/gta?x',
     'https://api.letterboxd.com/api/v0/me', 'https://api.letterboxd.com/api/v0/me/account-status?x=1',
     'https://eda.yandex.ru/eats/v1/layout-constructor/v1/layout?x=1', 'https://eda.yandex.ru/eats/v1/orders-info/v1/orders?limit=10'];
   const notScript = ['https://mobileapi.ddxfitness.ru/v2/employees/positions?x', 'https://api.finance.ozon.ru/mobile/obank/features', 'https://www.gosuslugi.ru/',
-    'https://reward-system.2gis.com/progress', 'https://social-graph.2gis.com/social-graph/users/friendship/list',
+    'https://advisor.api.2gis.ru/api/3.0/ads/sync', 'https://myplaces.api.2gis.ru/api/1.0/myplaces/authuser', 'https://reward-system.2gis.com/progress', 'https://social-graph.2gis.com/social-graph/users/friendship/list',
     'https://stories.api.2gis.ru/3.0/stories/viewed', 'https://s.ltrbxd.com/static/img/x.png', 'https://letterboxd.com/film/x/',
     'https://eda.yandex.ru/eats/v1/launch/v2/native', 'https://eda.yandex.ru/eats/v1/orders-info/v1/details'];
   inScript.forEach((u) => { if (!pat.test(u)) throw new Error('не идёт в скрипт: ' + u); });
@@ -509,8 +509,9 @@ t('A-B1 «Ниже рынка»: полка «Распродажа 11.11» с т
     Wb('BigSaveHeader', { title: 'Ниже рынка' }), Wb('HomepageProfitBannerCommon', { data: { snippets: snipB(8) } }), Wb('UniversalTabs', { tabs: [{ id: 't1' }] })])] } } },
   (p) => { eq(p.layout.widgetInstances[0].children.map((w) => w.name), ['BigSaveHeader', 'UniversalTabs']); });
 t('A-K1 экран монет: «Рекомендуем вам» (loyalty-cashback) -> пусто',
-  { url: 'https://wapi.aliexpress.ru/aer-jsonapi/bx/web/recommend/loyalty-cashback', method: 'POST', body: { data: { items: [{ rowV2: { items: [{ productId: 1 }] } }] } } },
-  (p) => { eq(p.data.items, []); });
+  { url: 'https://wapi.aliexpress.ru/aer-jsonapi/bx/web/recommend/loyalty-cashback', method: 'POST',
+    body: { data: { products: [{ productId: 1 }], productsV2: [{ snippetContainer: { presentations: [] } }], pageInfo: { hasNextPage: true }, streamId: 's' } } },
+  (p) => { eq(p.data.products, []); eq(p.data.productsV2, []); eq(p.data.pageInfo.hasNextPage, false); eq(p.data.streamId, 's'); });
 }
 
 group('2. Letterboxd');
