@@ -115,7 +115,10 @@
  *       промо-карусели главной (dynamicBlocks: «Выгодно на почте», «Почта маркет», «Эхо Великой Победы», без заголовка).
  *       Для разбора: Яндекс Маркет пишет в журнал надписи секций; 2GIS — ответы отзывов, datafeedback и
  *       advisor …/ads/sync (откуда «Rate places» и реклама), без изменений. WB: «You may like these items» в корзине
- *       (recom/personal/v9/search, короткий адрес). AliExpress: список заказов. Почта: значок «Подарки».
+ *       (recom/personal/v9/search, короткий адрес). AliExpress: список заказов, карусели баннеров вверху заказов
+ *       и избранного (Fusion…BannerSectionV2), «Распродажа» в «Ниже рынка», «Рекомендуем вам» на экране монет.
+ *       Почта: промо-значки («Подарки», «Лотереи», «₽абота», «Гороскоп», «Игры») и карусели «Благотворительность»,
+ *       «Гороскоп», «Игры». 2GIS: «Мои места» (myplaces) — в журнал только устройство ответа.
  *
  * Страховки: тело не меняется, если ничего не найдено; подъём вверх не выше блока в 20% ответа;
  * один удаляемый элемент не больше 40% ответа; если суммарно удаляется больше 60% — ответ как есть.
@@ -309,8 +312,9 @@
 
   // AliExpress, «Комбо» (mobile-layout/choice): карусель «Выгодный момент!» — виджет HomepageProfitBannerCommon с товарами
   // (state.data.data.snippets[]); почти вся страница по размеру, поэтому общее правило по заголовку её не берёт. Пустые
-  // заготовки с тем же именем в ленте вкладок (snippets пуст), вкладки и лента не трогаются.
-  if (/(^|\.)aliexpress\.ru$/.test(host) && /^\/mobile-layout\/choice$/.test(path) && data && data.layout &&
+  // заготовки с тем же именем в ленте вкладок (snippets пуст), вкладки и лента не трогаются. Так же устроена полка
+  // «Распродажа 11.11» на вкладке «Ниже рынка» (mobile-layout/bigsave).
+  if (/(^|\.)aliexpress\.ru$/.test(host) && /^\/mobile-layout\/(choice|bigsave)$/.test(path) && data && data.layout &&
       Array.isArray(data.layout.widgetInstances)) {
     var aeCg = [];
     (function cw(list, depth) {
@@ -322,7 +326,7 @@
         if (w) cw(w.children, depth + 1);
       }
     })(data.layout.widgetInstances, 0);
-    if (DEBUG) log('AE Combo: removed ' + (aeCg.join(',') || 'nothing'));
+    if (DEBUG) log('AE ' + (/bigsave/.test(path) ? 'bigsave' : 'Combo') + ': removed ' + (aeCg.join(',') || 'nothing'));
     if (aeCg.length) return $done({ body: restoreBig(JSON.stringify(data)) });
   }
 
@@ -500,6 +504,16 @@
         }
       })(data, 0);
       log('2GIS probe size=' + body.length + ' top=' + (Array.isArray(data) ? '[' + data.length + ']' : Object.keys(data).slice(0, 12).join('/')) + ' | ' + (gtx.join(' ; ') || '-'));
+      // «Мои места» (откуда, похоже, «Rate places» с счётчиком): только устройство ответа — ключи и длины списков, без значений
+      if (/^myplaces/.test(host)) {
+        var gsh = [];
+        (function gsWalk(o, pth, dd) {
+          if (dd > 5 || gsh.length >= 30 || !o || typeof o !== 'object') return;
+          if (Array.isArray(o)) { gsh.push(pth + '[' + o.length + ']'); if (o.length) gsWalk(o[0], pth + '[0]', dd + 1); return; }
+          for (var sk2 in o) { var sv = o[sk2]; if (sv && typeof sv === 'object') gsWalk(sv, pth + '.' + sk2, dd + 1); else gsh.push(pth + '.' + sk2 + ':' + typeof sv); }
+        })(data, '', 0);
+        log('2GIS myplaces shape: ' + gsh.join(' '));
+      }
     }
     if (!gr.n) return $done({});
     return $done({ body: restoreBig(JSON.stringify(data)) });
@@ -1051,8 +1065,9 @@
   }
 
   // AliExpress: полка «Товары от партнеров» (p4p-only-shelf — только оплаченные показы), рекомендации корзины и лента
-  // «Подобрали для вас» под заказом (order-recommend) -> пусто
-  if (IS_ALI && /\/recommend\/(v\d+\/p4p-only-shelf|shopping-cart\/v\d+|order-recommend)$/.test(path) && data && data.data &&
+  // «Подобрали для вас» под заказом (order-recommend), «Рекомендуем вам» на экране монет (web/recommend/loyalty-cashback) -> пусто
+  if (IS_ALI && DEBUG && /\/recommend\/loyalty-cashback$/.test(path)) log('AE coins recs: ' + (data && typeof data === 'object' ? Object.keys(data).join('/') + (data.data && typeof data.data === 'object' ? ' data=' + Object.keys(data.data).slice(0, 10).join('/') : '') : typeof data));
+  if (IS_ALI && /\/recommend\/(v\d+\/p4p-only-shelf|shopping-cart\/v\d+|order-recommend|loyalty-cashback)$/.test(path) && data && data.data &&
       Array.isArray(data.data.items) && data.data.items.length) {
     stats.blockBytes += size(data.data.items); stats.removed += data.data.items.length;
     stats.reasons['ae-recs-empty'] = data.data.items.length; data.data.items = [];
@@ -1317,7 +1332,9 @@
   //   с uuid+name в списке children, не корень страницы);
   //   «Товары от партнеров», «Вы смотрели», «Одна цена», «Рекомендуем вам», «Подобрали для вас»,
   //   а также виджеты рекомендаций по имени (…Recommend…, …Waterfall…, …P4p…) и полка «Хиты распродажи» в профиле
-  //   (HomepageProfitBannerCommon). Пункты меню профиля не трогаются.
+  //   (HomepageProfitBannerCommon), карусели рекламных баннеров вверху списка заказов и избранного («Гигантские скидки:
+  //   смартфоны TECNO», «Регистраторы 70mai») — FusionBannerSectionV2 / FusionLazyListBannerSectionV2. Пункты меню
+  //   профиля не трогаются.
   //   Избранное (mobile-layout/profile/wishlist): «Рекомендуем вам» под товарами — виджеты рекомендаций по имени;
   //   виджет со списком самого избранного (state.data.itemsGrid) не трогается.
   // Яндекс Маркет, избранное и корзина (api/screen/favourites|cart): блок = секция экрана (type …Section):
@@ -1328,7 +1345,7 @@
     TB = { tag: 'AE', maxFrac: 0.95,
            titles: /^(рекомендуем вам|товары от партн[её]ров|вы смотрели|одна цена|подобрали для вас)[.:!]?$/i,
            keep: /служба поддержки|справка aliexpress|настройки и данные|купоны|мои отзывы|вопросы и ответы|награда каждый день|мои заказы|"itemsGrid"/i,
-           nameRe: /(Recommend|Recs(?![a-z])|Waterfall|P4p|P4P|^HomepageProfitBannerCommon$)/,
+           nameRe: /(Recommend|Recs(?![a-z])|Waterfall|P4p|P4P|^HomepageProfitBannerCommon$|^Fusion(LazyList)?BannerSectionV\d+$)/,
            isBlock: function (st) { var n = st.node; return st.inArr && st.arrKey === 'children' && n && typeof n.uuid === 'string' && typeof n.name === 'string'; } };
   else if (isAvito && /\/favorites\/items\/(widgets|list)$/.test(path))
     TB = { tag: 'AV', maxFrac: 1.01, allowWhole: true, titles: /^похожие объявления$/i, keep: null,
@@ -1541,7 +1558,8 @@
     if (dropped.length) stats.reasons['pochta-blocks-off'] = dropped.join('/');
   }
   // Почта, главная: карусели dynamicBlocks[] ({title, banners[]}). Рекламные и промо — «Спецпредложения», «Выгодно на
-  // почте» (товары в отделениях), «Почта маркет», «Эхо Великой Победы» (видео «Письма помогали побеждать») и карусели
+  // почте» (товары в отделениях), «Почта маркет», «Эхо Великой Победы» (видео «Письма помогали побеждать»),
+  // «Благотворительность» («Почтовый лес»), «Гороскоп», «Игры» и карусели
   // без заголовка (одиночный баннер, например «Бесплатная доставка по РФ») — убираются. Карусели услуг (переводы,
   // подписки, пенсии, марки…) остаются.
   if (IS_POCHTA && /get\.blocks/i.test(path) && data && Array.isArray(data.dynamicBlocks)) {
@@ -1549,15 +1567,15 @@
     for (var db = data.dynamicBlocks.length - 1; db >= 0; db--) {
       var dyn = data.dynamicBlocks[db], dt = dyn && typeof dyn.title === 'string' ? dyn.title.replace(/\s+/g, ' ').trim() : '';
       if (!dyn || typeof dyn !== 'object' || !Array.isArray(dyn.banners)) continue;
-      if (!dt || /^(спецпредложения|выгодно на почте|почта маркет|эхо великой победы)$/i.test(dt)) {
+      if (!dt || /^(спецпредложения|выгодно на почте|почта маркет|эхо великой победы|благотворительность|гороскоп|игры)$/i.test(dt)) {
         stats.blockBytes += size(dyn); stats.removed++;
         dynGone.unshift((dt || '?') + '(' + dyn.banners.length + ')'); data.dynamicBlocks.splice(db, 1);
       }
     }
     if (dynGone.length) stats.reasons['pochta-dynamic-off'] = dynGone.join('/');
   }
-  // Почта, главная: значок «Подарки» среди иконок (iconsBlock.icons[] и blocks.<раздел>.icons[]) — витрина акций с
-  // красным счётчиком. Убирается только он; остальные иконки (Пенсии, ОСАГО, Налоги…) остаются.
+  // Почта, главная: промо-значки среди иконок (iconsBlock.icons[] и blocks.<раздел>.icons[]) — «Подарки» (витрина акций
+  // с красным счётчиком), «Лотереи», «₽абота», «Гороскоп», «Игры». Остальные (Пенсии, ОСАГО, Налоги…) остаются.
   if (IS_POCHTA && /get\.blocks/i.test(path) && data && typeof data === 'object') {
     var icoGone = 0;
     var icoLists = [data.iconsBlock && data.iconsBlock.icons];
@@ -1566,7 +1584,7 @@
       if (!Array.isArray(il)) return;
       if (DEBUG) log('icons: ' + il.map(function (x) { return x && x.title || '?'; }).join(', '));
       for (var ii = il.length - 1; ii >= 0; ii--)
-        if (il[ii] && typeof il[ii].title === 'string' && /^подарки$/i.test(il[ii].title.trim())) { il.splice(ii, 1); icoGone++; }
+        if (il[ii] && typeof il[ii].title === 'string' && /^(подарки|лотереи|[р₽]абота|гороскоп|игры)$/i.test(il[ii].title.trim())) { il.splice(ii, 1); icoGone++; }
     });
     if (icoGone) { stats.removed += icoGone; stats.reasons['pochta-gifts-icon'] = icoGone; }
   }

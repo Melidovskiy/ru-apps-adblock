@@ -469,14 +469,16 @@ const blocks = { blocks: { MONEY: { a: 1 } }, dynamicBlocks: [
   { title: 'Денежные переводы', order: 3, banners: [{ imageUrl: 'https://mobileapp.russianpost.ru/c.png' }] },
   { title: 'Эхо Великой Победы', order: 4, banners: [{ imageUrl: 'https://mobileapp.russianpost.ru/d.png' }] },
   { title: 'ВЫГОДНО НА ПОЧТЕ', order: 5, banners: [{ imageUrl: 'https://mobileapp.russianpost.ru/e.png' }] },
-  { title: 'Пенсии и социальные выплаты', order: 6, banners: [{ imageUrl: 'https://mobileapp.russianpost.ru/f.png' }] }] };
+  { title: 'Пенсии и социальные выплаты', order: 6, banners: [{ imageUrl: 'https://mobileapp.russianpost.ru/f.png' }] },
+  { title: 'Благотворительность', order: 7, banners: [{ imageUrl: 'https://mobileapp.russianpost.ru/g.png' }] },
+  { title: 'Гороскоп', order: 8, banners: [{ imageUrl: 'https://mobileapp.russianpost.ru/h.png' }] }] };
 t('P1 главная: промо-карусели и карусели без заголовка убираются, услуги — как есть',
   { url: 'https://mobileapp.russianpost.ru/mobile-api/method/7.8/get.blocks', body: blocks },
   (p) => { eq(p.dynamicBlocks.map((b) => b.title), ['Денежные переводы', 'Пенсии и социальные выплаты']); eq(p.blocks, { MONEY: { a: 1 } }); });
-t('P2 главная: значок «Подарки» убирается, остальные значки — как есть',
+t('P2 главная: промо-значки («Подарки», «Лотереи», «₽абота», «Игры») убираются, остальные — как есть',
   { url: 'https://mobileapp.russianpost.ru/mobile-api/method/7.8/get.blocks',
-    body: { blocks: { EVENTS: { icons: [{ title: 'Лотерея', imageUrl: 'https://mobileapp.russianpost.ru/l.png' }, { title: 'Подарки', imageUrl: 'https://mobileapp.russianpost.ru/g.png' }, { title: 'ОСАГО', imageUrl: 'https://mobileapp.russianpost.ru/o.png' }] } } } },
-  (p) => { eq(p.blocks.EVENTS.icons.map((x) => x.title), ['Лотерея', 'ОСАГО']); });
+    body: { blocks: { EVENTS: { icons: [{ title: 'Лотереи', imageUrl: 'https://mobileapp.russianpost.ru/l.png' }, { title: 'Подарки', imageUrl: 'https://mobileapp.russianpost.ru/g.png' }, { title: '₽абота', imageUrl: 'https://mobileapp.russianpost.ru/r.png' }, { title: 'ОСАГО', imageUrl: 'https://mobileapp.russianpost.ru/o.png' }, { title: 'Игры', imageUrl: 'https://mobileapp.russianpost.ru/i.png' }, { title: 'Обучение', imageUrl: 'https://mobileapp.russianpost.ru/e.png' }] } } } },
+  (p) => { eq(p.blocks.EVENTS.icons.map((x) => x.title), ['ОСАГО', 'Обучение']); });
 }
 
 group('2. Wildberries: рекомендации в корзине; AliExpress: список заказов');
@@ -495,6 +497,20 @@ t('A-L1 список заказов: «Одна цена» и «Подобрал
     W2('OrderListTabs', { tabs: [{ title: 'Активные' }] }), W2('OrderListItems', { orders: [{ title: 'Клавиатура', image: 'https://ae04.alicdn.com/kf/k.jpg' }] }),
     W2('HomepageProfitBannerCommon', {}), W2('RecommendationList', { data: { title: 'Подобрали для вас' } })] }] } } },
   (p) => { eq(p.layout.widgetInstances[0].children.map((w) => w.name), ['OrderListTabs', 'OrderListItems']); });
+t('A-L2 список заказов: карусель баннеров вверху (FusionLazyListBannerSectionV2) убирается',
+  { url: 'https://wapi.aliexpress.ru/mobile-layout/order-list-v3', body: { alias: 'order-list', layout: { widgetInstances: [{ uuid: 'root', name: 'Root', children: [
+    W2('FusionLazyListBannerSectionV2', { data: { banners: [{ title: 'Гигантские скидки: смартфоны TECNO', imageUrl: 'https://ae04.alicdn.com/kf/t.jpg' }] } }),
+    W2('OrdersAndProductsTabs', { tabs: [{ title: 'Активные' }] })] }] } } },
+  (p) => { eq(p.layout.widgetInstances[0].children.map((w) => w.name), ['OrdersAndProductsTabs']); });
+const Wb = (name, data, children) => Object.assign({ uuid: 'u-' + name, name: name, vertical: 'bigsave', version: 1, state: { data: data || {} } }, children ? { children: children } : {});
+const snipB = (n) => Array.from({ length: n }, (_, i) => ({ imageUrl: 'https://ae04.alicdn.com/kf/b' + i + '.jpg', price: '1 049 ₽', discount: '-59%' }));
+t('A-B1 «Ниже рынка»: полка «Распродажа 11.11» с товарами убирается, вкладки — как есть',
+  { url: 'https://wapi.aliexpress.ru/mobile-layout/bigsave', body: { alias: 'bigsave', layout: { widgetInstances: [Wb('BigSaveRoot', {}, [
+    Wb('BigSaveHeader', { title: 'Ниже рынка' }), Wb('HomepageProfitBannerCommon', { data: { snippets: snipB(8) } }), Wb('UniversalTabs', { tabs: [{ id: 't1' }] })])] } } },
+  (p) => { eq(p.layout.widgetInstances[0].children.map((w) => w.name), ['BigSaveHeader', 'UniversalTabs']); });
+t('A-K1 экран монет: «Рекомендуем вам» (loyalty-cashback) -> пусто',
+  { url: 'https://wapi.aliexpress.ru/aer-jsonapi/bx/web/recommend/loyalty-cashback', method: 'POST', body: { data: { items: [{ rowV2: { items: [{ productId: 1 }] } }] } } },
+  (p) => { eq(p.data.items, []); });
 }
 
 group('2. Letterboxd');
