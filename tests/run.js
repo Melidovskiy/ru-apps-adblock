@@ -467,7 +467,7 @@ const blocks = { blocks: { MONEY: { a: 1 } }, dynamicBlocks: [
   { title: 'Спецпредложения', order: 1, banners: [{ imageUrl: 'https://mobileapp.russianpost.ru/a.png' }] },
   { order: 2, banners: [{ imageUrl: 'https://mobileapp.russianpost.ru/b.png' }] },
   { title: 'Денежные переводы', order: 3, banners: [{ imageUrl: 'https://mobileapp.russianpost.ru/c.png' }] },
-  { title: 'Эхо Великой Победы', order: 4, banners: [{ imageUrl: 'https://mobileapp.russianpost.ru/d.png' }] },
+  { title: 'Эхо истории', order: 4, banners: [{ imageUrl: 'https://mobileapp.russianpost.ru/d.png' }] },
   { title: 'ВЫГОДНО НА ПОЧТЕ', order: 5, banners: [{ imageUrl: 'https://mobileapp.russianpost.ru/e.png' }] },
   { title: 'Пенсии и социальные выплаты', order: 6, banners: [{ imageUrl: 'https://mobileapp.russianpost.ru/f.png' }] },
   { title: 'Благотворительность', order: 7, banners: [{ imageUrl: 'https://mobileapp.russianpost.ru/g.png' }] },
