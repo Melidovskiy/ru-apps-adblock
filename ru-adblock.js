@@ -1,5 +1,5 @@
 /*
- * RU Apps AdBlock v3.29 — фильтр ответов для Shadowrocket (type=http-response, requires-body=true)
+ * RU Apps AdBlock v3.30 — фильтр ответов для Shadowrocket (type=http-response, requires-body=true)
  * Ozon / Wildberries / Яндекс Маркет / Яндекс Go / Яндекс Еда / Avito / СДЭК / Почта России / AliExpress / DDX Fitness / 2GIS /
  * Letterboxd
  *
@@ -109,6 +109,12 @@
  * v3.29: Avito, корзина — блок «Добавьте ещё N товара до скидки N%» (поле bundle у продавца в cart/items). СДЭК,
  *       главная — карусель сторис (api/stories -> пустой список; рекламные слайды в них общий поиск и раньше убирал,
  *       но оставались пустые сторис).
+ * v3.30: Ozon — api.ozon.ru перешёл на сертификат российского УЦ, при расшифровке приложение писало «нет соединения»:
+ *       модуль его больше не расшифровывает (правила для экранов Ozon ниже остаются, но не вызываются). AliExpress —
+ *       «Хиты распродажи» (HomepageProfitBannerCommon) на главной и в профиле, «Рекомендуем вам» в избранном. Почта —
+ *       промо-карусели главной (dynamicBlocks: «Выгодно на почте», «Почта маркет», «Эхо Великой Победы», без заголовка).
+ *       Для разбора: Яндекс Маркет пишет в журнал надписи секций; 2GIS — ответы tugc / myplaces / useractivity
+ *       (откуда «Rate places»), без изменений.
  *
  * Страховки: тело не меняется, если ничего не найдено; подъём вверх не выше блока в 20% ответа;
  * один удаляемый элемент не больше 40% ответа; если суммарно удаляется больше 60% — ответ как есть.
@@ -399,6 +405,8 @@
   // и рекламный баннер под ним (advisor.api …/api/3.0/ads/advise/… — banners с isAds/erid, «Реклама ·
   // ПАО Сбербанк…»). Остальное (и схема ответа) — как было. Те же адреса есть на зеркалах *.2giskz.app, приложение ходит
   // на оба. Задания и награды, «Rate places» — запросы отклоняет модуль (см. [Rule]). Другие ответы 2GIS — как есть.
+  // С v3.30 «Rate places» вернулся без запросов к checkin: ответы tugc / myplaces / useractivity расшифровываются
+  // только для журнала (argument=debug) — по нему будет видно, откуда блок; сами ответы не меняются.
   var IS_2GIS = /(^|\.)2gis\.(ru|com)$|(^|\.)2giskz\.app$/.test(host);
   var GIS_RULE = !IS_2GIS ? '' :
     /^stories(\.api\.2gis\.ru|-api\.2giskz\.app)$/.test(host) && /^\/\d+\.\d+\/stories\/?$/.test(path) ? 'stories' :
@@ -478,6 +486,19 @@
     }
     else if (GIS_RULE === 'ads') gemp(data, 'banners', '.');
     if (DEBUG) log('2GIS ' + (GIS_RULE || 'not handled') + ': ' + (gr.n ? 'removed ' + gr.at.join(',') : 'nothing to remove'));
+    // журнал для ещё не разобранных ответов (отметки, места, активность — откуда «Rate places»): ключи и первые надписи
+    if (DEBUG && !GIS_RULE && data && typeof data === 'object') {
+      var gtx = [];
+      (function gtWalk(o, dd) {
+        if (dd > 12 || gtx.length >= 8 || !o || typeof o !== 'object') return;
+        for (var gk in o) {
+          var gv = o[gk];
+          if (typeof gv === 'string' && /[a-zа-яё]{3}/i.test(gv) && gv.length < 60 && !/^https?:|^[0-9a-f-]{20,}$/i.test(gv)) { gtx.push(gk + '=' + gv); if (gtx.length >= 8) return; }
+          else if (gv && typeof gv === 'object') gtWalk(gv, dd + 1);
+        }
+      })(data, 0);
+      log('2GIS probe size=' + body.length + ' top=' + (Array.isArray(data) ? '[' + data.length + ']' : Object.keys(data).slice(0, 12).join('/')) + ' | ' + (gtx.join(' ; ') || '-'));
+    }
     if (!gr.n) return $done({});
     return $done({ body: restoreBig(JSON.stringify(data)) });
   }
@@ -1036,6 +1057,8 @@
   // AliExpress, главная (mobile-layout/home/fusion): полка плиток под иконками категорий — «Звёздные купоны» и витрины
   // брендов (baseus, 70mai, OnePlus…). Это виджет главной со списком state.data.stories (в логе v3.17 — 18 плиток);
   // убирается весь виджет. Иконки категорий (diamonds), вкладки и лента «Для вас» не трогаются.
+  // «Хиты распродажи» — виджет HomepageProfitBannerCommon: товары он догружает сам (aer-jsonapi/…/media-kit-api/
+  // common-shelf), в описании главной он пустой. Убирается сам виджет — тогда полка не запрашивается и не рисуется.
   if (IS_ALI && /^\/mobile-layout\/home\/fusion$/.test(path) && data && data.layout && Array.isArray(data.layout.widgetInstances)) {
     var aeHomeGone = [], aeHomeAll = [];
     data.layout.widgetInstances.forEach(function (wi) {
@@ -1049,10 +1072,15 @@
           aeHomeGone.push(nm + '(' + sd.stories.length + ')'); ch.splice(i, 1);
           continue;
         }
+        if (nm === 'HomepageProfitBannerCommon') {
+          stats.blockBytes += size(w); stats.removed++;
+          aeHomeGone.push(nm); ch.splice(i, 1);
+          continue;
+        }
         if (DEBUG) aeHomeAll.unshift(nm + (sd && typeof sd === 'object' && !Array.isArray(sd) ? '[' + Object.keys(sd).slice(0, 6).join('/') + ']' : ''));
       }
     });
-    if (aeHomeGone.length) { stats.reasons['ae-home-stories'] = aeHomeGone.length; stats.blocks.push('ae-home:' + aeHomeGone.join('+')); }
+    if (aeHomeGone.length) { stats.reasons['ae-home-blocks'] = aeHomeGone.length; stats.blocks.push('ae-home:' + aeHomeGone.join('+')); }
     if (DEBUG) log('AE home: removed ' + (aeHomeGone.join(',') || '-') + ' | other widgets: ' + (aeHomeAll.join(',') || '-').slice(0, 1200));
   }
 
@@ -1103,6 +1131,19 @@
         for (var i = 0; i < n.length && i < 100; i++) if (n[i] && typeof n[i].type === 'string' && /[a-z]Section$/.test(n[i].type)) { isSecList = true; break; }
         if (isSecList) {
           if (!ymSecs) ymSecs = n.map(function (x) { return x && typeof x === 'object' ? String(x.type || '?') + '(' + size(x) + ')' : '?'; }).join(',');
+          // журнал: первые надписи каждой секции — чтобы по логу понять, какая секция что рисует
+          if (DEBUG) n.forEach(function (x, xi) {
+            var tx = [];
+            (function txWalk(o, dd) {
+              if (dd > 30 || tx.length >= 4 || !o || typeof o !== 'object') return;
+              for (var tk in o) {
+                var tv = o[tk];
+                if (typeof tv === 'string' && /[а-яё]/i.test(tv) && tv.length < 60 && tx.indexOf(tv) < 0) { tx.push(tv); if (tx.length >= 4) return; }
+                else if (tv && typeof tv === 'object') txWalk(tv, dd + 1);
+              }
+            })(x, 0);
+            log('YM section ' + xi + ' ' + String(x && x.type || '?') + ': ' + (tx.join(' | ') || '-'));
+          });
           for (var j = n.length - 1; j >= 0; j--) if (n[j] && n[j].type === 'FeedboxSection') {
             stats.blockBytes += size(n[j]); ymGone.push('FeedboxSection(' + size(n[j]) + ')'); n.splice(j, 1);
           }
@@ -1270,16 +1311,19 @@
   // AliExpress, профиль (mobile-layout/profile), корзина (mobile-layout/shopcartFusion) и страница заказа
   //   (mobile-layout/order-details-redesign…): блок = виджет (объект с uuid+name в списке children, не корень страницы);
   //   «Товары от партнеров», «Вы смотрели», «Одна цена», «Рекомендуем вам», «Подобрали для вас»,
-  //   а также виджеты рекомендаций по имени (…Recommend…, …Waterfall…, …P4p…). Пункты меню профиля не трогаются.
+  //   а также виджеты рекомендаций по имени (…Recommend…, …Waterfall…, …P4p…) и полка «Хиты распродажи» в профиле
+  //   (HomepageProfitBannerCommon). Пункты меню профиля не трогаются.
+  //   Избранное (mobile-layout/profile/wishlist): «Рекомендуем вам» под товарами — виджеты рекомендаций по имени;
+  //   виджет со списком самого избранного (state.data.itemsGrid) не трогается.
   // Яндекс Маркет, избранное и корзина (api/screen/favourites|cart): блок = секция экрана (type …Section):
   //   «Достойны сердечка», «Может пригодиться».
   // Avito, избранное (favorites/items/widgets): «Похожие объявления».
   var TB = null, tbLog = [];
-  if (IS_ALI && /^\/mobile-layout\/(profile|shopcartFusion|order-details-redesign\d*)$/.test(path))
+  if (IS_ALI && /^\/mobile-layout\/(profile|profile\/wishlist|shopcartFusion|order-details-redesign\d*)$/.test(path))
     TB = { tag: 'AE', maxFrac: 0.95,
            titles: /^(рекомендуем вам|товары от партн[её]ров|вы смотрели|одна цена|подобрали для вас)[.:!]?$/i,
-           keep: /служба поддержки|справка aliexpress|настройки и данные|купоны|мои отзывы|вопросы и ответы|награда каждый день|мои заказы/i,
-           nameRe: /(Recommend|Recs(?![a-z])|Waterfall|P4p|P4P)/,
+           keep: /служба поддержки|справка aliexpress|настройки и данные|купоны|мои отзывы|вопросы и ответы|награда каждый день|мои заказы|"itemsGrid"/i,
+           nameRe: /(Recommend|Recs(?![a-z])|Waterfall|P4p|P4P|^HomepageProfitBannerCommon$)/,
            isBlock: function (st) { var n = st.node; return st.inArr && st.arrKey === 'children' && n && typeof n.uuid === 'string' && typeof n.name === 'string'; } };
   else if (isAvito && /\/favorites\/items\/(widgets|list)$/.test(path))
     TB = { tag: 'AV', maxFrac: 1.01, allowWhole: true, titles: /^похожие объявления$/i, keep: null,
@@ -1490,6 +1534,22 @@
       }
     }
     if (dropped.length) stats.reasons['pochta-blocks-off'] = dropped.join('/');
+  }
+  // Почта, главная: карусели dynamicBlocks[] ({title, banners[]}). Рекламные и промо — «Спецпредложения», «Выгодно на
+  // почте» (товары в отделениях), «Почта маркет», «Эхо Великой Победы» (видео «Письма помогали побеждать») и карусели
+  // без заголовка (одиночный баннер, например «Бесплатная доставка по РФ») — убираются. Карусели услуг (переводы,
+  // подписки, пенсии, марки…) остаются.
+  if (IS_POCHTA && /get\.blocks/i.test(path) && data && Array.isArray(data.dynamicBlocks)) {
+    var dynGone = [];
+    for (var db = data.dynamicBlocks.length - 1; db >= 0; db--) {
+      var dyn = data.dynamicBlocks[db], dt = dyn && typeof dyn.title === 'string' ? dyn.title.replace(/\s+/g, ' ').trim() : '';
+      if (!dyn || typeof dyn !== 'object' || !Array.isArray(dyn.banners)) continue;
+      if (!dt || /^(спецпредложения|выгодно на почте|почта маркет|эхо великой победы)$/i.test(dt)) {
+        stats.blockBytes += size(dyn); stats.removed++;
+        dynGone.unshift((dt || '?') + '(' + dyn.banners.length + ')'); data.dynamicBlocks.splice(db, 1);
+      }
+    }
+    if (dynGone.length) stats.reasons['pochta-dynamic-off'] = dynGone.join('/');
   }
   if (IS_POCHTA && /get\.blocks/i.test(path) && DEBUG && data && data.blocks && typeof data.blocks === 'object')
     log('blocks keys: ' + Object.keys(data.blocks).join(',') + ' | dynamicBlocks: ' +

@@ -456,6 +456,23 @@ t('G7b «Рекомендуем вам» без рекламы — как ест
 t('G8 адрес 2GIS без правила — как есть (без общего поиска рекламы)', { url: 'https://guide.api.2gis.com/v1/collections',
   body: { achievements: { daily: [{ title: 'Write a review', label: 'Реклама', image: 'https://x/y.png' }, { title: 'b', image: 'https://x/z.png' }] } } },
   (p, out, r) => { eq(r.result, {}); });
+t('G9 отметки и места (tugc / myplaces) — только журнал, ответ как есть', { url: 'https://tugc.2gis.com/v1/checkin/suggest',
+  body: { items: [{ name: 'Burger King', rubric: 'Fast-food restaurant chain', ads: { erid: 'x' } }] } },
+  (p, out, r) => { eq(r.result, {}); if (!r.logs.some((l) => /2GIS probe size=/.test(l))) throw new Error('нет строки журнала 2GIS probe'); });
+}
+
+group('2. Почта России');
+{
+const blocks = { blocks: { MONEY: { a: 1 } }, dynamicBlocks: [
+  { title: 'Спецпредложения', order: 1, banners: [{ imageUrl: 'https://mobileapp.russianpost.ru/a.png' }] },
+  { order: 2, banners: [{ imageUrl: 'https://mobileapp.russianpost.ru/b.png' }] },
+  { title: 'Денежные переводы', order: 3, banners: [{ imageUrl: 'https://mobileapp.russianpost.ru/c.png' }] },
+  { title: 'Эхо Великой Победы', order: 4, banners: [{ imageUrl: 'https://mobileapp.russianpost.ru/d.png' }] },
+  { title: 'ВЫГОДНО НА ПОЧТЕ', order: 5, banners: [{ imageUrl: 'https://mobileapp.russianpost.ru/e.png' }] },
+  { title: 'Пенсии и социальные выплаты', order: 6, banners: [{ imageUrl: 'https://mobileapp.russianpost.ru/f.png' }] }] };
+t('P1 главная: промо-карусели и карусели без заголовка убираются, услуги — как есть',
+  { url: 'https://mobileapp.russianpost.ru/mobile-api/method/7.8/get.blocks', body: blocks },
+  (p) => { eq(p.dynamicBlocks.map((b) => b.title), ['Денежные переводы', 'Пенсии и социальные выплаты']); eq(p.blocks, { MONEY: { a: 1 } }); });
 }
 
 group('2. Letterboxd');
@@ -510,6 +527,29 @@ t('A-C1 «Комбо»: карусель «Выгодный момент!» уб
     eq(sc.map((w) => w.name), ['ChoiceMainHeaderContainer', 'UniversalTabs']);
     eq(sc[1].children[0].children[0].children[0].name, 'HomepageProfitBannerCommon');
   });
+const aeHome = { alias: 'home', layout: { widgetInstances: [Wc('HomepageRoot', {}, [
+  Wc('HomepageSearchBar', { items: [{ text: 'Найти на AliExpress' }] }), Wc('MediaKitDiamond', { diamonds: [{ link: 'a' }] }),
+  Wc('HomepageProfitBannerCommon', {}), Wc('HomepageProfitBannerCommon', {}),
+  Wc('UniversalTabs', { tabs: [{ id: 't1' }] })])] } };
+t('A-H2 главная: «Хиты распродажи» (HomepageProfitBannerCommon) убираются, поиск, иконки и вкладки — как есть',
+  { url: 'https://wapi.aliexpress.ru/mobile-layout/home/fusion', body: aeHome },
+  (p) => { eq(p.layout.widgetInstances[0].children.map((w) => w.name), ['HomepageSearchBar', 'MediaKitDiamond', 'UniversalTabs']); });
+const aeProf = { alias: 'profile', layout: { widgetInstances: [W('Root', {})] } };
+aeProf.layout.widgetInstances[0].children = [W('ProfileV4MenuList', {})];
+aeProf.layout.widgetInstances[0].children[0].children = [
+  W('ProfileV4ListItem', { title: 'Мои заказы' }), W('DailyCoinsBanner', { title: 'Награда каждый день' }),
+  W('HomepageProfitBannerCommon', {}), W('ProfileV4SocialButtons', {})];
+t('A-P2 профиль: «Хиты распродажи» убираются, пункты меню и «Награда каждый день» — как есть',
+  { url: 'https://wapi.aliexpress.ru/mobile-layout/profile', body: aeProf },
+  (p) => { eq(p.layout.widgetInstances[0].children[0].children.map((w) => w.name), ['ProfileV4ListItem', 'DailyCoinsBanner', 'ProfileV4SocialButtons']); });
+const aeWish = { alias: 'wishlist', layout: { widgetInstances: [W('Root', {})] } };
+aeWish.layout.widgetInstances[0].children = [W('WishlistScreen', {})];
+aeWish.layout.widgetInstances[0].children[0].children = [
+  W('WishlistItems', { itemsGrid: { itemsRows: [{ items: [{ itemId: 1, snippetInfo: { images: [{ url: 'https://ae04.alicdn.com/kf/w.jpg' }] } }] }] } }),
+  W('RecommendationList', { data: { snippets: snip(6) } })];
+t('A-W1 избранное: «Рекомендуем вам» убирается, сами товары избранного — как есть',
+  { url: 'https://wapi.aliexpress.ru/mobile-layout/profile/wishlist', body: aeWish },
+  (p) => { eq(p.layout.widgetInstances[0].children[0].children.map((w) => w.name), ['WishlistItems']); });
 t('A-O2 лента «Подобрали для вас» под заказом -> пустая', { url: 'https://wapi.aliexpress.ru/aer-jsonapi/bx/mobile/recommend/order-recommend',
   body: { data: { items: [{ rowV2: { items: [{ productId: 1 }, { productId: 2 }] } }], trace: 't' } } },
   (p) => { eq(p.data.items, []); eq(p.data.trace, 't'); });
