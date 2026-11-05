@@ -103,11 +103,11 @@ tx('M7 маршрутизация адресов: что идёт в скрип�
   const rw = MOD.split('\n').filter((l) => /^\^/.test(l)).map((l) => new RegExp(l.slice(0, l.lastIndexOf(' - '))));
   const inScript = ['https://wapi.aliexpress.ru/mobile-layout/home/fusion', 'https://api.ozon.ru/api/composer-api.bx/page/json/v2?url=/my',
     'https://finance.wb.ru/api/offers-api/v1/product/offers', 'https://mobileapi.ddxfitness.ru/stories?x=1', 'https://tc.mobile.yandex.net/4.0/urbanads/sdk?',
-    'https://stories.api.2gis.ru/3.0/stories?locale=ru_RU', 'https://tips-api.2giskz.app/api/1.0/tips?x=1', 'https://advisor.api.2gis.ru/api/3.0/ads/advise/gta?x',
+    'https://stories.api.2gis.ru/3.0/stories?locale=ru_RU', 'https://tips-api.2giskz.app/api/1.0/tips?x=1', 'https://advisor.api.2gis.ru/api/3.0/ads/advise/gta?x', 'https://advisor.api.2gis.ru/api/3.0/ads/sync',
     'https://api.letterboxd.com/api/v0/me', 'https://api.letterboxd.com/api/v0/me/account-status?x=1',
     'https://eda.yandex.ru/eats/v1/layout-constructor/v1/layout?x=1', 'https://eda.yandex.ru/eats/v1/orders-info/v1/orders?limit=10'];
   const notScript = ['https://mobileapi.ddxfitness.ru/v2/employees/positions?x', 'https://api.finance.ozon.ru/mobile/obank/features', 'https://www.gosuslugi.ru/',
-    'https://advisor.api.2gis.ru/api/3.0/ads/sync', 'https://reward-system.2gis.com/progress', 'https://social-graph.2gis.com/social-graph/users/friendship/list',
+    'https://reward-system.2gis.com/progress', 'https://social-graph.2gis.com/social-graph/users/friendship/list',
     'https://stories.api.2gis.ru/3.0/stories/viewed', 'https://s.ltrbxd.com/static/img/x.png', 'https://letterboxd.com/film/x/',
     'https://eda.yandex.ru/eats/v1/launch/v2/native', 'https://eda.yandex.ru/eats/v1/orders-info/v1/details'];
   inScript.forEach((u) => { if (!pat.test(u)) throw new Error('не идёт в скрипт: ' + u); });
@@ -456,7 +456,7 @@ t('G7b «Рекомендуем вам» без рекламы — как ест
 t('G8 адрес 2GIS без правила — как есть (без общего поиска рекламы)', { url: 'https://guide.api.2gis.com/v1/collections',
   body: { achievements: { daily: [{ title: 'Write a review', label: 'Реклама', image: 'https://x/y.png' }, { title: 'b', image: 'https://x/z.png' }] } } },
   (p, out, r) => { eq(r.result, {}); });
-t('G9 отметки и места (tugc / myplaces) — только журнал, ответ как есть', { url: 'https://tugc.2gis.com/v1/checkin/suggest',
+t('G9 отзывы (public-api.reviews) — только журнал, ответ как есть', { url: 'https://public-api.reviews.2gis.com/2.0/suggest',
   body: { items: [{ name: 'Burger King', rubric: 'Fast-food restaurant chain', ads: { erid: 'x' } }] } },
   (p, out, r) => { eq(r.result, {}); if (!r.logs.some((l) => /2GIS probe size=/.test(l))) throw new Error('нет строки журнала 2GIS probe'); });
 }
@@ -473,6 +473,28 @@ const blocks = { blocks: { MONEY: { a: 1 } }, dynamicBlocks: [
 t('P1 главная: промо-карусели и карусели без заголовка убираются, услуги — как есть',
   { url: 'https://mobileapp.russianpost.ru/mobile-api/method/7.8/get.blocks', body: blocks },
   (p) => { eq(p.dynamicBlocks.map((b) => b.title), ['Денежные переводы', 'Пенсии и социальные выплаты']); eq(p.blocks, { MONEY: { a: 1 } }); });
+t('P2 главная: значок «Подарки» убирается, остальные значки — как есть',
+  { url: 'https://mobileapp.russianpost.ru/mobile-api/method/7.8/get.blocks',
+    body: { blocks: { EVENTS: { icons: [{ title: 'Лотерея', imageUrl: 'https://mobileapp.russianpost.ru/l.png' }, { title: 'Подарки', imageUrl: 'https://mobileapp.russianpost.ru/g.png' }, { title: 'ОСАГО', imageUrl: 'https://mobileapp.russianpost.ru/o.png' }] } } } },
+  (p) => { eq(p.blocks.EVENTS.icons.map((x) => x.title), ['Лотерея', 'ОСАГО']); });
+}
+
+group('2. Wildberries: рекомендации в корзине; AliExpress: список заказов');
+{
+const WBQ = '?spp=40&page=1&ab_ofd_reverse=true&query=129865263&hide_vflags=1&resultset=catalog&dest=1&appType=64&ldg=1&curr=rub&mdg=1&lang=en&locale=ru&sort=popular';
+t('WB1 корзина «You may like these items» (recom/personal/v9/search, параметры вразнобой) -> пустая',
+  { url: 'https://api-ios.wildberries.ru/__internal/recom/personal/v9/search' + WBQ, body: { metadata: { name: 'x' }, total: 2, products: [{ id: 1 }, { id: 2 }] } },
+  (p) => { eq(p.products, []); eq(p.total, 0); });
+t('WB2 главная (параметры по алфавиту) — как есть',
+  { url: 'https://api-ios.wildberries.ru/__internal/recom/personal/ru/male/v9/search?appType=64&curr=rub&dest=1&hide_vflags=1&lang=en&ldg=1&locale=ru&mdg=1&page=1&query=129865263&resultset=catalog&sort=popular&spp=40',
+    body: { metadata: { name: 'x' }, products: [{ id: 1 }] } },
+  (p, out, r) => { eq(r.result, {}); });
+const W2 = (name, data) => ({ uuid: 'u-' + name, name: name, vertical: 'order', version: 1, state: { data: data || {} }, props: {}, staticProps: {} });
+t('A-L1 список заказов: «Одна цена» и «Подобрали для вас» убираются, заказы — как есть',
+  { url: 'https://wapi.aliexpress.ru/mobile-layout/order-list-v3', body: { alias: 'order-list', layout: { widgetInstances: [{ uuid: 'root', name: 'Root', children: [
+    W2('OrderListTabs', { tabs: [{ title: 'Активные' }] }), W2('OrderListItems', { orders: [{ title: 'Клавиатура', image: 'https://ae04.alicdn.com/kf/k.jpg' }] }),
+    W2('HomepageProfitBannerCommon', {}), W2('RecommendationList', { data: { title: 'Подобрали для вас' } })] }] } } },
+  (p) => { eq(p.layout.widgetInstances[0].children.map((w) => w.name), ['OrderListTabs', 'OrderListItems']); });
 }
 
 group('2. Letterboxd');

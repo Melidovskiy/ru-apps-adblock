@@ -113,8 +113,9 @@
  *       модуль его больше не расшифровывает (правила для экранов Ozon ниже остаются, но не вызываются). AliExpress —
  *       «Хиты распродажи» (HomepageProfitBannerCommon) на главной и в профиле, «Рекомендуем вам» в избранном. Почта —
  *       промо-карусели главной (dynamicBlocks: «Выгодно на почте», «Почта маркет», «Эхо Великой Победы», без заголовка).
- *       Для разбора: Яндекс Маркет пишет в журнал надписи секций; 2GIS — ответы tugc / myplaces / useractivity
- *       (откуда «Rate places»), без изменений.
+ *       Для разбора: Яндекс Маркет пишет в журнал надписи секций; 2GIS — ответы отзывов, datafeedback и
+ *       advisor …/ads/sync (откуда «Rate places» и реклама), без изменений. WB: «You may like these items» в корзине
+ *       (recom/personal/v9/search, короткий адрес). AliExpress: список заказов. Почта: значок «Подарки».
  *
  * Страховки: тело не меняется, если ничего не найдено; подъём вверх не выше блока в 20% ответа;
  * один удаляемый элемент не больше 40% ответа; если суммарно удаляется больше 60% — ответ как есть.
@@ -405,8 +406,9 @@
   // и рекламный баннер под ним (advisor.api …/api/3.0/ads/advise/… — banners с isAds/erid, «Реклама ·
   // ПАО Сбербанк…»). Остальное (и схема ответа) — как было. Те же адреса есть на зеркалах *.2giskz.app, приложение ходит
   // на оба. Задания и награды, «Rate places» — запросы отклоняет модуль (см. [Rule]). Другие ответы 2GIS — как есть.
-  // С v3.30 «Rate places» вернулся без запросов к checkin: ответы tugc / myplaces / useractivity расшифровываются
-  // только для журнала (argument=debug) — по нему будет видно, откуда блок; сами ответы не меняются.
+  // С v3.30 «Rate places» вернулся без запросов к checkin: ответы отзывов (public-api.reviews) и datafeedback, а также
+  // advisor …/ads/sync (откуда, похоже, берётся реклама при медленном ответе advise) расшифровываются только для
+  // журнала (argument=debug) — по нему будет видно, откуда блоки; сами ответы не меняются.
   var IS_2GIS = /(^|\.)2gis\.(ru|com)$|(^|\.)2giskz\.app$/.test(host);
   var GIS_RULE = !IS_2GIS ? '' :
     /^stories(\.api\.2gis\.ru|-api\.2giskz\.app)$/.test(host) && /^\/\d+\.\d+\/stories\/?$/.test(path) ? 'stories' :
@@ -574,6 +576,8 @@
   // Главная и профиль берут одну и ту же персональную выдачу recom/personal/…/search?query=<id>.
   // Главная собирает параметры по алфавиту (appType, curr, dest … spp; ab_* — в конце),
   // профиль — в случайном порядке. Пустой список — штатное состояние («нет рекомендаций»).
+  // Корзина («You may like these items») берёт ту же выдачу по короткому адресу recom/personal/v9/search, тоже с
+  // параметрами в случайном порядке -> пустая; главная по короткому адресу не ходит.
   function queryKeysSorted(u) {
     var q = u.split('?')[1] || '', keys = [];
     q.split('&').forEach(function (p) { var kk = p.split('=')[0]; if (kk && !/^ab_/i.test(kk)) keys.push(kk); });
@@ -581,7 +585,7 @@
     for (var i = 1; i < keys.length; i++) if (keys[i - 1] > keys[i]) return false;
     return true;
   }
-  if (/^api-ios\.wildberries\.ru$/.test(host) && /\/__internal\/recom\/personal\/[^\/]+\/[^\/]+\/v\d+\/search$/.test(path) &&
+  if (/^api-ios\.wildberries\.ru$/.test(host) && /\/__internal\/recom\/personal\/([^\/]+\/[^\/]+\/)?v\d+\/search$/.test(path) &&
       /[?&]query=\d+(&|$)/.test(url) && data && typeof data === 'object' && Array.isArray(data.products)) {
     var sorted = queryKeysSorted(url);
     if (DEBUG) log('RECS ' + (sorted ? 'main (sorted params) -> keep' : 'profile (unsorted params) -> empty') +
@@ -1308,8 +1312,9 @@
   if (!STRIP && !POCHTA_BANNERS && !IS_WB_FIN) scan(data, 0);
 
   // ───────── Блоки-рекомендации по заголовку ─────────
-  // AliExpress, профиль (mobile-layout/profile), корзина (mobile-layout/shopcartFusion) и страница заказа
-  //   (mobile-layout/order-details-redesign…): блок = виджет (объект с uuid+name в списке children, не корень страницы);
+  // AliExpress, профиль (mobile-layout/profile), корзина (mobile-layout/shopcartFusion), страница заказа
+  //   (mobile-layout/order-details-redesign…) и список заказов (mobile-layout/order-list-v…): блок = виджет (объект
+  //   с uuid+name в списке children, не корень страницы);
   //   «Товары от партнеров», «Вы смотрели», «Одна цена», «Рекомендуем вам», «Подобрали для вас»,
   //   а также виджеты рекомендаций по имени (…Recommend…, …Waterfall…, …P4p…) и полка «Хиты распродажи» в профиле
   //   (HomepageProfitBannerCommon). Пункты меню профиля не трогаются.
@@ -1319,7 +1324,7 @@
   //   «Достойны сердечка», «Может пригодиться».
   // Avito, избранное (favorites/items/widgets): «Похожие объявления».
   var TB = null, tbLog = [];
-  if (IS_ALI && /^\/mobile-layout\/(profile|profile\/wishlist|shopcartFusion|order-details-redesign\d*)$/.test(path))
+  if (IS_ALI && /^\/mobile-layout\/(profile|profile\/wishlist|shopcartFusion|order-details-redesign\d*|order-list-v\d+)$/.test(path))
     TB = { tag: 'AE', maxFrac: 0.95,
            titles: /^(рекомендуем вам|товары от партн[её]ров|вы смотрели|одна цена|подобрали для вас)[.:!]?$/i,
            keep: /служба поддержки|справка aliexpress|настройки и данные|купоны|мои отзывы|вопросы и ответы|награда каждый день|мои заказы|"itemsGrid"/i,
@@ -1550,6 +1555,20 @@
       }
     }
     if (dynGone.length) stats.reasons['pochta-dynamic-off'] = dynGone.join('/');
+  }
+  // Почта, главная: значок «Подарки» среди иконок (iconsBlock.icons[] и blocks.<раздел>.icons[]) — витрина акций с
+  // красным счётчиком. Убирается только он; остальные иконки (Пенсии, ОСАГО, Налоги…) остаются.
+  if (IS_POCHTA && /get\.blocks/i.test(path) && data && typeof data === 'object') {
+    var icoGone = 0;
+    var icoLists = [data.iconsBlock && data.iconsBlock.icons];
+    if (data.blocks && typeof data.blocks === 'object') for (var ib in data.blocks) icoLists.push(data.blocks[ib] && data.blocks[ib].icons);
+    icoLists.forEach(function (il) {
+      if (!Array.isArray(il)) return;
+      if (DEBUG) log('icons: ' + il.map(function (x) { return x && x.title || '?'; }).join(', '));
+      for (var ii = il.length - 1; ii >= 0; ii--)
+        if (il[ii] && typeof il[ii].title === 'string' && /^подарки$/i.test(il[ii].title.trim())) { il.splice(ii, 1); icoGone++; }
+    });
+    if (icoGone) { stats.removed += icoGone; stats.reasons['pochta-gifts-icon'] = icoGone; }
   }
   if (IS_POCHTA && /get\.blocks/i.test(path) && DEBUG && data && data.blocks && typeof data.blocks === 'object')
     log('blocks keys: ' + Object.keys(data.blocks).join(',') + ' | dynamicBlocks: ' +
