@@ -1,4 +1,4 @@
-#!name=RU Apps AdBlock v3.30
+#!name=RU Apps AdBlock v3.31
 #!desc=Ozon / WB / Яндекс Маркет / Яндекс Go / Яндекс Еда / Avito / СДЭК / Почта России / AliExpress / DDX Fitness / 2GIS / Letterboxd. Убирает рекламу и навязчивые подборки.
 
 [Rule]
@@ -22,6 +22,7 @@ AND,((DOMAIN,tips-api.2giskz.app),(PROTOCOL,UDP)),REJECT-NO-DROP
 AND,((DOMAIN,advisor-api.2giskz.app),(PROTOCOL,UDP)),REJECT-NO-DROP
 AND,((DOMAIN,binario-delivery.api.2gis.ru),(PROTOCOL,UDP)),REJECT-NO-DROP
 AND,((DOMAIN,binario-delivery-api.2giskz.app),(PROTOCOL,UDP)),REJECT-NO-DROP
+AND,((DOMAIN,api.letterboxd.com),(PROTOCOL,UDP)),REJECT-NO-DROP
 
 # ─────────────────────────── OZON ───────────────────────────
 DOMAIN-SUFFIX,weborama-tech.ru,REJECT-DROP
@@ -130,5 +131,5 @@ RU-AdBlock-DDX = type=http-request,pattern=^https:\/\/mobileapi\.ddxfitness\.ru(
 
 [MITM]
 hostname = %APPEND% banners-bt.wildberries.ru, apps-config.wildberries.ru, home-service.wildberries.ru, marketing-info.wildberries.ru, specials.wildberries.ru, brandzones.wildberries.ru, wbxoofex.wildberries.ru, api-ios.wildberries.ru, static-basket-01.wbbasket.ru, static-basket-02.wbbasket.ru, static-basket-03.wbbasket.ru, static-basket-01.wb.ru, mapi.market.yandex.net, tc.mobile.yandex.net, app.avito.ru, mobileapp.russianpost.ru, my.cdek.ru, aer.acs.aliexpress.ru, wapi.aliexpress.ru, finance.wb.ru, wb-wallet.wildberries.ru, mobileapi.ddxfitness.ru, stories.api.2gis.ru, tips.api.2gis.ru, advisor.api.2gis.ru, stories-api.2giskz.app, tips-api.2giskz.app, advisor-api.2giskz.app, binario-delivery.api.2gis.ru, binario-delivery-api.2giskz.app, api.letterboxd.com, eda.yandex.ru
-# DDX Fitness: mobileapi.ddxfitness.ru (последний в строке) — баннеры и сторис на главной. Если в DDX всё равно не грузятся
+# DDX Fitness: mobileapi.ddxfitness.ru — баннеры и сторис на главной. Если в DDX всё равно не грузятся
 # разделы (тренеры, видео, абонемент) — уберите «, mobileapi.ddxfitness.ru» из строки hostname (вернутся баннеры и сторис).

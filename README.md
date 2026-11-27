@@ -1,7 +1,7 @@
 <img alt="ru-apps-adblock — модуль Shadowrocket: убирает рекламу и навязчивые рекомендации из Ozon, Wildberries, Яндекс Маркета, Яндекс Go, Яндекс Еды, Avito, СДЭК, Почты России, AliExpress, DDX Fitness, 2GIS и Letterboxd" src="assets/banner.png">
 
 [![Тесты](https://github.com/Melidovskiy/ru-apps-adblock/actions/workflows/test.yml/badge.svg)](https://github.com/Melidovskiy/ru-apps-adblock/actions/workflows/test.yml)
-[![Version](https://img.shields.io/badge/version-3.30-blue)](ru-adblock.js)
+[![Version](https://img.shields.io/badge/version-3.31-blue)](ru-adblock.js)
 [![Shadowrocket](https://img.shields.io/badge/Shadowrocket-module-orange)](RU-Apps-AdBlock.sgmodule)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 

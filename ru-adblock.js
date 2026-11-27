@@ -1,5 +1,5 @@
 /*
- * RU Apps AdBlock v3.30 — фильтр ответов для Shadowrocket (type=http-response, requires-body=true).
+ * RU Apps AdBlock v3.31 — фильтр ответов для Shadowrocket (type=http-response, requires-body=true).
  * Ozon, Wildberries, Яндекс Маркет, Яндекс Go, Яндекс Еда, Avito, СДЭК, Почта России, AliExpress, DDX Fitness, 2GIS,
  * Letterboxd.
  *
@@ -10,11 +10,12 @@
  *
  * Ограничения: если ничего не найдено, ответ не меняется; подъём не выше блока в 20% ответа; один элемент — не больше
  * 40% ответа; если удаляется больше 60%, ответ отдаётся как есть.
- * argument=debug — писать в журнал, что и где удалено.
+ * argument=debug — писать в журнал, что и где удалено; argument=probe — структура ответов.
  */
 (function () {
   var url = ($request && $request.url) || '';
   var DEBUG = typeof $argument === 'string' && $argument.indexOf('debug') !== -1;
+  var DEBUG_PROBE = typeof $argument === 'string' && $argument.indexOf('probe') !== -1;
   var m = url.match(/^https?:\/\/([^\/?#]+)([^?#]*)/) || [];
   var host = (m[1] || '').replace(/:\d+$/, '');
   var path = m[2] || '';
@@ -26,25 +27,38 @@
   // ───────── 64-битные числа: в кавычки до парсинга (только вне строк), обратно после ─────────
   var BIG = '__RUADB_BIG__';
   function protectBig(s) {
-    if (!/\d{16}/.test(s)) return s;
-    var chunks = [], last = 0, n = s.length, inStr = false;
+    var chunks = null, last = 0, n = s.length;
     for (var i = 0; i < n; i++) {
       var c = s.charCodeAt(i);
-      if (inStr) { if (c === 92) { i++; continue; } if (c === 34) inStr = false; continue; }
-      if (c === 34) { inStr = true; continue; }
+      if (c === 34) {
+        i++;
+        while (i < n) {
+          var q = s.indexOf('"', i);
+          if (q === -1) return chunks ? (chunks.push(s.slice(last)), chunks.join('')) : s;
+          var bs = q - 1;
+          while (bs >= i && s.charCodeAt(bs) === 92) bs--;
+          if (((q - 1 - bs) & 1) === 0) { i = q; break; }
+          i = q + 1;
+        }
+        continue;
+      }
       if ((c >= 48 && c <= 57) || c === 45) {
         var j = i + 1;
         while (j < n) { var d = s.charCodeAt(j); if (d >= 48 && d <= 57) j++; else break; }
-        var nc = s.charCodeAt(j);
+        var nc = j < n ? s.charCodeAt(j) : 0;
         if (nc === 46 || nc === 101 || nc === 69) {
           while (j < n) { var e = s.charCodeAt(j); if ((e >= 48 && e <= 57) || e === 46 || e === 101 || e === 69 || e === 43 || e === 45) j++; else break; }
           i = j - 1; continue;
         }
-        if (j - i - (c === 45 ? 1 : 0) >= 16) { chunks.push(s.slice(last, i), '"' + BIG + s.slice(i, j) + '"'); last = j; }
+        if (j - i - (c === 45 ? 1 : 0) >= 16) {
+          if (!chunks) chunks = [];
+          chunks.push(s.slice(last, i), '"' + BIG + s.slice(i, j) + '"');
+          last = j;
+        }
         i = j - 1;
       }
     }
-    if (!chunks.length) return s;
+    if (!chunks) return s;
     chunks.push(s.slice(last));
     return chunks.join('');
   }
@@ -138,6 +152,9 @@
 
   // WB Кошелёк (finance.wb.ru / wb-wallet.wildberries.ru): только свои правила, без общего поиска рекламы, см. ниже
   var IS_WB_FIN = /^(finance\.wb\.ru|wb-wallet\.wildberries\.ru)$/.test(host);
+  var IS_WB_OFFERS = IS_WB_FIN && /\/offers-api\/v\d+\/product\/offers$/.test(path);
+  var IS_CDEK = /(^|\.)cdek\.ru$/.test(host);
+  if (IS_CDEK && /\/dashboards/i.test(path)) return pass('cdek dashboards: skip');
 
   // Letterboxd: сама реклама не грузится, но приложение оставляет пустую рамку «REMOVE ADS», пока API просит её
   // показывать: hideAds / hideAdsInContent -> true, show…Ads -> false. Статус участника и платные функции не трогаются.
@@ -147,12 +164,17 @@
   var body = $response && $response.body;
   if (typeof body !== 'string' || body.length < 2) return pass('empty/binary body');
   if (IS_LB && !LB_SWITCH.test(body)) return pass('Letterboxd: no ad switches');
-  var c0 = body.replace(/^\s+/, '').charAt(0);
+  var bi0 = 0, blen = body.length;
+  while (bi0 < blen && (body.charCodeAt(bi0) <= 32 || body.charCodeAt(bi0) === 0xfeff)) bi0++;
+  var c0 = bi0 < blen ? body.charAt(bi0) : '';
   if (c0 !== '{' && c0 !== '[') {
     var rsh = $response.headers || {}, ctype = '';
     for (var rk in rsh) if (/^content-type$/i.test(rk)) ctype = String(rsh[rk]);
     return pass('not json' + (IS_WB_FIN ? ' (' + (ctype || '?') + ', ' + body.length + 'b)' : ''));
   }
+  if (IS_WB_FIN && !IS_WB_OFFERS && !/bi-crm-|\\u00/i.test(body)) return pass('WBFIN: no bi-crm');
+  if (c0 === '{' && /(^|\.)avito\.ru$/.test(host) && /^\/api\/\d+\/cart\/items/.test(path) &&
+      body.indexOf('"bundle"') === -1 && body.indexOf('\\u') === -1) return pass('Avito cart: removed nothing');
 
   var data;
   try { data = JSON.parse(protectBig(body)); } catch (e) { return pass('json parse error'); }
@@ -474,26 +496,29 @@
 
   var IS_POCHTA = /(^|\.)russianpost\.ru$/.test(host);
   var IS_WB_BANNERS = /^banners-bt\.wildberries\.ru$/.test(host);
-  var IS_CDEK = /(^|\.)cdek\.ru$/.test(host);
   // Где реклама — это почти весь ответ (баннерные сервисы), лимиты «не больше 40/60%» мешают
   // Яндекс Go: ответ рекламной сети (4.0/urbanads/…) — это только реклама (баннер «Реклама» на экране доставки и др.)
   var GO_URBANADS = /^tc\.mobile\.yandex\.net$/.test(host) && /\/urbanads\//.test(path);
   var GO_DELIVERY = /^tc\.mobile\.yandex\.net$/.test(host) && /\/cargo-c2c\/v\d+\/delivery\/state$/.test(path);
   var RELAXED = IS_WB_BANNERS || IS_CDEK || IS_POCHTA || GO_URBANADS;
   var ELEM_CAP = RELAXED ? 0.98 : 0.4, ABORT_CAP = RELAXED ? 1.01 : 0.6, CLIMB_CAP = RELAXED ? 0.9 : 0.35;
-  // Почта: ответ, целиком состоящий из рекламы -> все списки пустые (схема сохраняется)
-  var STRIP = false;
   var POCHTA_BANNERS = IS_POCHTA && /adv\.get\.banners/i.test(path);
   // Avito: виджет ленты с ключом вида embeddedAdvBanner / advBanner — рекламный блок целиком
   var AVITO_BLOCK_KEY = isAvito ? /adv\w*banner|banner\w*adv/i : null;
-  // СДЭК: плитки главного экрана (кнопки «Отправить», «Шопинг»…) — не трогаем, чтобы не было дыр в сетке
-  if (IS_CDEK && /\/dashboards/i.test(path)) return pass('cdek dashboards: skip');
   var GO_LAYOUT = /^tc\.mobile\.yandex\.net$/.test(host) && /\/mlutp\/v\d+\/widgets\/layout\//.test(path);
   // Лента плиток Go: products_widget (+ похожие *_widget с товарами/местами/рекомендациями)
   var BLOCK_TYPE = GO_LAYOUT ? /^[a-z_]*(product|place|restaurant|eats|goods|offer|feed|recommend|shelf|market|lavka)[a-z_]*_widget$/i : null;
   var PROBE = /(^|\.)(wildberries|wb|wbbasket|russianpost|cdek|avito|aliexpress)\.ru$/.test(host) || GO_LAYOUT || GO_URBANADS || GO_DELIVERY;
   var TOTAL = body.length;
   var stats = { removed: 0, bytes: 0, blockBytes: 0, blocks: [], reasons: {}, skippedBig: 0, targets: [] };
+  var visMemo = typeof WeakMap === 'function' ? new WeakMap() : null;
+  var sizeMemo = typeof WeakMap === 'function' ? new WeakMap() : null;
+  function size(x) {
+    if (sizeMemo && x && typeof x === 'object' && sizeMemo.has(x)) return sizeMemo.get(x);
+    var s = 0; try { s = JSON.stringify(x).length; } catch (e) {}
+    if (sizeMemo && x && typeof x === 'object') sizeMemo.set(x, s);
+    return s;
+  }
 
   // ───────── Ozon: рекомендации в профиле, избранном и корзине; баннер Ozon Банка ─────────
   // Страницы composer (/my, /my/favorites, /cart): ленты рекомендаций (shelf.infiniteScroll и страницы-продолжения),
@@ -640,6 +665,8 @@
   var KEY_ADINFO = isAvito ? null
     : /^(ad_?(label|marker|mark|disclaimer|badge)|adv_?(label|marker|info|badge)|advertiser(_?(info|name|data))?)$/i;
   var AVITO_TYPE = /banner|adfox|yandex_?ad|mytarget|dfp|^ads?$|^promo/i;
+  var AVITO_TYPE_KEY = /^(type|widgetType|widget_type|kind|viewType|view_type|template|component|layoutType)$/;
+  var RE_ORD = /ord/i, RE_ERID = /erid/i;
 
   // Ключ = набор слов (camelCase / snake_case): «adErid» -> [ad, erid]; «offerId» -> [offer, id]
   function keyHasWord(k, word) {
@@ -649,29 +676,53 @@
     return false;
   }
 
+  var keyClass = Object.create(null);
+  function classifyKey(k) {
+    var m = 0;
+    if (RE_ORD.test(k) && keyHasWord(k, 'ord') && (keyHasWord(k, 'mark') || keyHasWord(k, 'label') || keyHasWord(k, 'info'))) m |= 1;
+    if (RE_ERID.test(k) && keyHasWord(k, 'erid')) m |= 2;
+    if (KEY_BOOL && KEY_BOOL.test(k)) m |= 4;
+    if (KEY_ADVERT_ID && KEY_ADVERT_ID.test(k)) m |= 8;
+    if (KEY_ADINFO && KEY_ADINFO.test(k)) m |= 16;
+    if (isAvito && AVITO_TYPE_KEY.test(k)) m |= 32;
+    if (AVITO_BLOCK_KEY && AVITO_BLOCK_KEY.test(k)) m |= 64;
+    keyClass[k] = m;
+    return m;
+  }
+
   function textReason(s) {
-    if (typeof s !== 'string' || s.length > 400) return null;
-    var t = s.trim();
-    if (LABELS[t.toLowerCase()] && t !== 'AD') return 'label:' + t;
-    if (LABEL_PREFIX.test(t)) return 'label-prefix';
-    if (ERID_TEXT.test(t)) return 'erid-text';
-    if (ERID_PARAM.test(t)) return 'erid-url';
-    if (ADVERTISER.test(t)) return 'advertiser-text';
+    if (typeof s !== 'string' || s.length < 2 || s.length > 400) return null;
+    var cf = s.charCodeAt(0), cl = s.charCodeAt(s.length - 1);
+    var t = (cf <= 32 || cl <= 32 || cf === 160 || cl === 160 || cf > 0x1fff || cl > 0x1fff) ? s.trim() : s;
+    var tl = t.length;
+    if (tl < 2) return null;
+    if (tl <= 18 && LABELS[t.toLowerCase()] && t !== 'AD') return 'label:' + t;
+    var c0 = t.charCodeAt(0);
+    if ((c0 === 1088 || c0 === 1056 || c0 === 1089 || c0 === 1057) && LABEL_PREFIX.test(t)) return 'label-prefix';
+    var hasEq = t.indexOf('=') !== -1;
+    if ((hasEq || t.indexOf(':') !== -1) && ERID_TEXT.test(t)) return 'erid-text';
+    if (hasEq && ERID_PARAM.test(t)) return 'erid-url';
+    if (tl >= 12 && ADVERTISER.test(t)) return 'advertiser-text';
     return null;
   }
 
   var POCHTA_ADV = /\/specialoffers\/|adv\.get\.image/i;
   function leafReason(k, v) {
     if (v === null || v === undefined || v === false || v === '' || v === 0) return null;
-    // ОРД-маркировка баннера (WB: ordBannerMark = «ООО …, ИНН …, ЕРИД …»)
-    if (typeof v === 'string' && v.length > 3 && keyHasWord(k, 'ord') && (keyHasWord(k, 'mark') || keyHasWord(k, 'label') || keyHasWord(k, 'info')))
-      return 'key:' + k;
-    if (IS_POCHTA && typeof v === 'string' && POCHTA_ADV.test(v)) return 'pochta-adv';
-    if (keyHasWord(k, 'erid') && (typeof v === 'string' ? v.length >= 4 : typeof v === 'number')) return 'key:' + k;
-    if (KEY_BOOL && (v === true || v === 1) && KEY_BOOL.test(k)) return 'flag:' + k;
-    if (KEY_ADVERT_ID && KEY_ADVERT_ID.test(k)) return 'key:' + k;
-    if (KEY_ADINFO && KEY_ADINFO.test(k) && (typeof v === 'string' ? v.length > 0 : true)) return 'key:' + k;
-    if (isAvito && typeof v === 'string' && /^(type|widgetType|widget_type|kind|viewType|view_type|template|component|layoutType)$/.test(k) && AVITO_TYPE.test(v)) return 'avito-type:' + v;
+    var kc = keyClass[k];
+    if (kc === undefined) kc = classifyKey(k);
+    if (kc) {
+      // ОРД-маркировка баннера (WB: ordBannerMark = «ООО …, ИНН …, ЕРИД …»)
+      if ((kc & 1) && typeof v === 'string' && v.length > 3) return 'key:' + k;
+      if (IS_POCHTA && typeof v === 'string' && POCHTA_ADV.test(v)) return 'pochta-adv';
+      if ((kc & 2) && (typeof v === 'string' ? v.length >= 4 : typeof v === 'number')) return 'key:' + k;
+      if ((kc & 4) && (v === true || v === 1)) return 'flag:' + k;
+      if (kc & 8) return 'key:' + k;
+      if ((kc & 16) && (typeof v === 'string' ? v.length > 0 : true)) return 'key:' + k;
+      if ((kc & 32) && typeof v === 'string' && AVITO_TYPE.test(v)) return 'avito-type:' + v;
+    } else if (IS_POCHTA && typeof v === 'string' && POCHTA_ADV.test(v)) {
+      return 'pochta-adv';
+    }
     return textReason(v);
   }
 
@@ -680,16 +731,27 @@
   var VIS_KEY_EXCL = /(colou?r|style|tint|alpha|size|width|height|radius|border|type|position|align|mode|scale|ratio|aspect|opacity|count|enabled|visible|hidden|text|title)/i;
   var IMG_URL = /^https?:\/\/\S+(\.(jpe?g|png|webp|gif|avif|heic|svg|mp4|webm|m3u8|mov)(\?|#|$)|avatars\.mds\.yandex\.net|\/get-[a-z]|ir\.ozone\.ru|img\.avito\.st|wbbasket\.ru|geobasket\.ru|wbstatic)/i;
   var VIS_TYPE = /^(image|remote_image|video|gif|picture|lottie|animation|banner)$/i;
-  var visMemo = typeof WeakMap === 'function' ? new WeakMap() : null;
+  var visKeyCache = Object.create(null);
+  function isVisKey(k) {
+    var r = visKeyCache[k];
+    if (r === undefined) r = visKeyCache[k] = VIS_KEY.test(k) && !VIS_KEY_EXCL.test(k);
+    return r;
+  }
+  function isImgUrl(s) {
+    if (s.length < 11) return false;
+    var c = s.charCodeAt(0);
+    return (c === 104 || c === 72) && IMG_URL.test(s);
+  }
   function hasVisual(root) {
     if (visMemo && visMemo.has(root)) return visMemo.get(root);
     var stack = [root], budget = 5000, found = false;
     while (stack.length && budget-- > 0 && !found) {
       var n = stack.pop();
+      if (visMemo && n !== root && visMemo.has(n)) { if (visMemo.get(n)) { found = true; break; } continue; }
       if (Array.isArray(n)) {
         for (var i = 0; i < n.length; i++) {
           var x = n[i];
-          if (typeof x === 'string') { if (IMG_URL.test(x)) { found = true; break; } }
+          if (typeof x === 'string') { if (isImgUrl(x)) { found = true; break; } }
           else if (x && typeof x === 'object') stack.push(x);
         }
       } else if (n && typeof n === 'object') {
@@ -697,7 +759,7 @@
         for (var k in n) {
           var v = n[k];
           if (typeof v === 'string') {
-            if (IMG_URL.test(v) || (VIS_KEY.test(k) && !VIS_KEY_EXCL.test(k) && v.length >= 3 && !/\s/.test(v))) { found = true; break; }
+            if (isImgUrl(v) || (v.length >= 3 && isVisKey(k) && !/\s/.test(v))) { found = true; break; }
           } else if (v && typeof v === 'object') stack.push(v);
         }
       }
@@ -706,21 +768,11 @@
     return found;
   }
 
-  var sizeMemo = typeof WeakMap === 'function' ? new WeakMap() : null;
-  function size(x) {
-    if (sizeMemo && x && typeof x === 'object' && sizeMemo.has(x)) return sizeMemo.get(x);
-    var s = 0; try { s = JSON.stringify(x).length; } catch (e) {}
-    if (sizeMemo && x && typeof x === 'object') sizeMemo.set(x, s);
-    return s;
-  }
-
   // ───────── вложенный JSON в строках (Ozon widgetStates): раскрыть -> обработать -> собрать ─────────
   var hydrated = []; // [{owner, key, obj}] в порядке раскрытия (внешние раньше)
   var hydratedSet = typeof WeakSet === 'function' ? new WeakSet() : null;
   function looksJSON(s) {
-    if (typeof s !== 'string' || s.length < 20) return false;
-    var a = s.charAt(0), z = s.charAt(s.length - 1);
-    return (a === '{' && z === '}') || (a === '[' && z === ']');
+    return typeof s === 'string' && s.length >= 20 && s.charCodeAt(0) === 123 && s.charCodeAt(s.length - 1) === 125;
   }
   function hydrate(node, depth) {
     if (depth > 60 || !node || typeof node !== 'object') return;
@@ -740,7 +792,7 @@
     }
   }
   hydrate(data, 0);
-  if (DEBUG && PROBE) probe();
+  if (DEBUG_PROBE && PROBE) probe();
   function isHydrated(o) { return hydratedSet ? hydratedSet.has(o) : false; }
 
   // ───────── Яндекс Go: лента плиток целиком ─────────
@@ -794,26 +846,34 @@
     for (var k in node) node[k] = strip(node[k], depth + 1);
     return node;
   }
-  if (STRIP) { data = strip(data, 0); stats.reasons['strip'] = stats.removed; }
 
   // ───────── проход 1: найти маркеры и выбрать, что удалять ─────────
   // unit = элемент массива (объект) или раскрытое JSON-значение; только их можно удалять
   var targets = [];        // {kind:'arr'|'json', parent, key, node, units, idx, pathStr}
   var targetNodes = typeof Set === 'function' ? new Set() : null;
-  var stepStack = [];      // [{parent, key, node, unit, kind}]
+  var stepStack = [], stepLen = 0;
   var rootHits = [];       // маркеры вне любого списка (метка на весь ответ)
 
-  function pathString(steps) {
-    var s = '';
-    for (var i = 0; i < steps.length; i++) s += typeof steps[i].key === 'number' ? '[' + steps[i].key + ']' : '.' + steps[i].key;
+  function pushStep(parent, key, node, unit, kind) {
+    var f = stepStack[stepLen];
+    if (f) { f.parent = parent; f.key = key; f.node = node; f.unit = unit; f.kind = kind; }
+    else stepStack[stepLen] = { parent: parent, key: key, node: node, unit: unit, kind: kind };
+    stepLen++;
+  }
+
+  function pathString(steps, len) {
+    var s = '', n = len === undefined ? steps.length : len;
+    for (var i = 0; i < n; i++) s += typeof steps[i].key === 'number' ? '[' + steps[i].key + ']' : '.' + steps[i].key;
     return s.length > 90 ? '…' + s.slice(-89) : s;
   }
 
-  function onHit(reason, leafStep) {
+  function onHit(reason) {
     stats.reasons[reason] = (stats.reasons[reason] || 0) + 1;
-    var steps = leafStep ? stepStack.concat([leafStep]) : stepStack.slice();
-    var units = [];
-    for (var i = steps.length - 1; i >= 0; i--) if (steps[i].unit) units.push(steps[i]);
+    var units = [], unitPos = [];
+    for (var i = stepLen - 1; i >= 0; i--) {
+      var f = stepStack[i];
+      if (f.unit) { units.push({ parent: f.parent, key: f.key, node: f.node, unit: true, kind: f.kind }); unitPos.push(i); }
+    }
     if (!units.length) { rootHits.push(reason); return; }
     var pick = 0, capBlocked = false;
     if (!hasVisual(units[0].node)) {
@@ -829,60 +889,67 @@
     if (targetNodes && targetNodes.has(u.node)) return;
     if (targetNodes) targetNodes.add(u.node);
     targets.push({ kind: u.kind, parent: u.parent, key: u.key, node: u.node, units: units, idx: pick,
-                   pathStr: pathString(steps.slice(0, steps.indexOf(u) + 1)) });
+                   pathStr: DEBUG ? pathString(stepStack, unitPos[pick] + 1) : '' });
   }
 
   // Целый блок по типу (лента Go): удаляем ближайший элемент списка, который его содержит
   function onBlock(typeName) {
-    var u = null;
-    for (var i = stepStack.length - 1; i >= 0; i--) if (stepStack[i].unit) { u = stepStack[i]; break; }
-    if (!u) { stats.blocks.push(typeName + ':no-list'); return false; }
+    var ui = -1;
+    for (var i = stepLen - 1; i >= 0; i--) if (stepStack[i].unit) { ui = i; break; }
+    if (ui < 0) { stats.blocks.push(typeName + ':no-list'); return false; }
+    var uf = stepStack[ui];
     // не удаляем, если после удаления от ответа ничего не останется (значит, это и есть весь экран)
-    if (TOTAL - size(u.node) < 200) { stats.blocks.push(typeName + ':whole-response'); return false; }
-    if (targetNodes && targetNodes.has(u.node)) return true;
-    if (targetNodes) targetNodes.add(u.node);
+    if (TOTAL - size(uf.node) < 200) { stats.blocks.push(typeName + ':whole-response'); return false; }
+    if (targetNodes && targetNodes.has(uf.node)) return true;
+    if (targetNodes) targetNodes.add(uf.node);
     var units = [];
-    for (var j = stepStack.length - 1; j >= 0; j--) if (stepStack[j].unit) units.push(stepStack[j]);
+    for (var j = stepLen - 1; j >= 0; j--) {
+      var f = stepStack[j];
+      if (f.unit) units.push({ parent: f.parent, key: f.key, node: f.node, unit: true, kind: f.kind });
+    }
+    var u = units[0];
     targets.push({ kind: u.kind, parent: u.parent, key: u.key, node: u.node, units: units, idx: 0, block: true,
-                   pathStr: pathString(stepStack.slice(0, stepStack.indexOf(u) + 1)) + ' (' + typeName + ')' });
+                   pathStr: DEBUG ? pathString(stepStack, ui + 1) + ' (' + typeName + ')' : '' });
     stats.reasons['block:' + typeName] = (stats.reasons['block:' + typeName] || 0) + 1;
     return true;
   }
 
   function scan(node, depth) {
     if (depth > 80) return;
-    if (BLOCK_TYPE && !Array.isArray(node) && typeof node.type === 'string' && BLOCK_TYPE.test(node.type)) {
-      if (onBlock(node.type)) return;
-    }
-    if (AVITO_BLOCK_KEY && !Array.isArray(node)) {
-      for (var bk in node) {
-        if (AVITO_BLOCK_KEY.test(bk) && node[bk] && typeof node[bk] === 'object') { if (onBlock(bk)) return; }
-      }
-    }
     if (Array.isArray(node)) {
       for (var i = 0; i < node.length; i++) {
         var ch = node[i];
         if (typeof ch === 'string') {
           var r = textReason(ch) || (IS_POCHTA && POCHTA_ADV.test(ch) ? 'pochta-adv' : null);
-          if (r) onHit(r, null);
+          if (r) onHit(r);
         } else if (ch && typeof ch === 'object') {
-          stepStack.push({ parent: node, key: i, node: ch, unit: !Array.isArray(ch), kind: 'arr' });
+          pushStep(node, i, ch, !Array.isArray(ch), 'arr');
           scan(ch, depth + 1);
-          stepStack.pop();
+          stepLen--;
         }
       }
       return;
+    }
+    if (BLOCK_TYPE && typeof node.type === 'string' && BLOCK_TYPE.test(node.type)) {
+      if (onBlock(node.type)) return;
+    }
+    if (AVITO_BLOCK_KEY) {
+      for (var bk in node) {
+        var bkc = keyClass[bk];
+        if (bkc === undefined) bkc = classifyKey(bk);
+        if ((bkc & 64) && node[bk] && typeof node[bk] === 'object') { if (onBlock(bk)) return; }
+      }
     }
     for (var k in node) {
       var v = node[k];
       if (v && typeof v === 'object') {
         var hyd = isHydrated(v);
-        stepStack.push({ parent: node, key: k, node: v, unit: hyd, kind: hyd ? 'json' : 'obj' });
+        pushStep(node, k, v, hyd, hyd ? 'json' : 'obj');
         scan(v, depth + 1);
-        stepStack.pop();
+        stepLen--;
       } else {
         var rr = leafReason(k, v);
-        if (rr) onHit(rr, null);
+        if (rr) onHit(rr);
       }
     }
   }
@@ -984,16 +1051,18 @@
       for (var j = stk.length - 1; j >= 0; j--) if (stk[j].inArr) {
         var u = stk[j], at = u.parent.indexOf(u.node), sz = size(u.node);
         if (at < 0) return;
-        if (sz > TOTAL * 0.3) { uaLog.push(pathString(stk.slice(0, j + 1)) + ' too-big ' + sz + 'b'); return; }
-        var nb = [];
-        for (var q = Math.max(0, at - 2); q <= Math.min(u.parent.length - 1, at + 2); q++) {
-          var el = u.parent[q]; nb.push(q === at ? '*' : String((el && typeof el === 'object' && (el.type || el.id)) || '?').slice(0, 30));
+        if (sz > TOTAL * 0.3) { if (DEBUG) uaLog.push(pathString(stk, j + 1) + ' too-big ' + sz + 'b'); return; }
+        if (DEBUG) {
+          var nb = [];
+          for (var q = Math.max(0, at - 2); q <= Math.min(u.parent.length - 1, at + 2); q++) {
+            var el = u.parent[q]; nb.push(q === at ? '*' : String((el && typeof el === 'object' && (el.type || el.id)) || '?').slice(0, 30));
+          }
+          uaLog.push(pathString(stk, j + 1) + ' (' + sz + 'b; around: ' + nb.join(',') + ')');
         }
         u.parent.splice(at, 1); stats.removed++; stats.blockBytes += sz;
-        uaLog.push(pathString(stk.slice(0, j + 1)) + ' (' + sz + 'b; around: ' + nb.join(',') + ')');
         return;
       }
-      uaLog.push('no list around ' + pathString(stk));
+      if (DEBUG) uaLog.push('no list around ' + pathString(stk));
     });
     if (uaHits.length) stats.reasons['go-urban-ads'] = uaHits.length;
     if (DEBUG) log('GO delivery: urban-ads ' + (uaLog.join(' ; ') || 'not found'));
@@ -1009,7 +1078,7 @@
         var isSecList = false;
         for (var i = 0; i < n.length && i < 100; i++) if (n[i] && typeof n[i].type === 'string' && /[a-z]Section$/.test(n[i].type)) { isSecList = true; break; }
         if (isSecList) {
-          if (!ymSecs) ymSecs = n.map(function (x) { return x && typeof x === 'object' ? String(x.type || '?') + '(' + size(x) + ')' : '?'; }).join(',');
+          if (DEBUG && !ymSecs) ymSecs = n.map(function (x) { return x && typeof x === 'object' ? String(x.type || '?') + '(' + size(x) + ')' : '?'; }).join(',');
           // с argument=debug: первые надписи каждой секции
           if (DEBUG) n.forEach(function (x, xi) {
             var tx = [];
@@ -1024,7 +1093,7 @@
             log('YM section ' + xi + ' ' + String(x && x.type || '?') + ': ' + (tx.join(' | ') || '-'));
           });
           for (var j = n.length - 1; j >= 0; j--) if (n[j] && n[j].type === 'FeedboxSection') {
-            stats.blockBytes += size(n[j]); ymGone.push('FeedboxSection(' + size(n[j]) + ')'); n.splice(j, 1);
+            var fsz = size(n[j]); stats.blockBytes += fsz; ymGone.push('FeedboxSection(' + fsz + ')'); n.splice(j, 1);
           }
           return;
         }
@@ -1042,13 +1111,19 @@
   function eachString(root, fn) {
     var st = [];
     (function walk(n, d) {
-      if (d > 60 || !n || typeof n !== 'object') return;
+      if (d > 60 || !n || typeof n !== 'object') return true;
       var arr = Array.isArray(n), ks = arr ? null : Object.keys(n), len = arr ? n.length : ks.length;
       for (var i = 0; i < len; i++) {
         var k = arr ? i : ks[i], v = n[k];
-        if (typeof v === 'string') fn(v, st, k);
-        else if (v && typeof v === 'object') { st.push({ parent: n, key: k, node: v, inArr: arr }); walk(v, d + 1); st.pop(); }
+        if (typeof v === 'string') { if (fn(v, st, k) === false) return false; }
+        else if (v && typeof v === 'object') {
+          st.push({ parent: n, key: k, node: v, inArr: arr });
+          var ok = walk(v, d + 1);
+          st.pop();
+          if (ok === false) return false;
+        }
       }
+      return true;
     })(root, 0);
   }
   // ближайший (снизу) шаг цепочки, который — объект-элемент списка
@@ -1060,7 +1135,7 @@
   function firstText(o) {
     var t = '';
     eachString(o, function (s, st, k) {
-      if (!t && typeof k === 'string' && /title|header|name|text|label|caption/i.test(k) && s.length <= 60 && !/^https?:|^\w+:\/\//.test(s)) t = s;
+      if (typeof k === 'string' && /title|header|name|text|label|caption/i.test(k) && s.length <= 60 && !/^https?:|^\w+:\/\//.test(s)) { t = s; return false; }
     });
     return t;
   }
@@ -1092,8 +1167,7 @@
   // Карусель на главной Кошелька приходит отдельным ответом offers-api: {offers: {<место показа>: [предложения]}}.
   // Все места BANNER_* (карусель, рекламные строки в списке банков) -> пустые списки; в остальных местах убираются
   // только предложения с пометкой «Реклама» (content.disclaimer).
-  if (IS_WB_FIN && /\/offers-api\/v\d+\/product\/offers$/.test(path) && data && data.offers && typeof data.offers === 'object' &&
-      !Array.isArray(data.offers)) {
+  if (IS_WB_OFFERS && data && data.offers && typeof data.offers === 'object' && !Array.isArray(data.offers)) {
     var wbOff = [];
     for (var pk in data.offers) {
       var pl = data.offers[pk];
@@ -1114,7 +1188,7 @@
     if (DEBUG) log('WBFIN offers: ' + Object.keys(data.offers).join(',').slice(0, 600) + ' | emptied: ' + (wbOff.join(', ') || '-'));
   }
   if (IS_WB_FIN && data && typeof data === 'object') {
-    var crmCards = [], crmSeen = [], crmLog = [], crmDirs = {};
+    var crmCards = [], crmSeen = typeof Set === 'function' ? new Set() : null, crmSeenArr = crmSeen ? null : [], crmLog = [], crmDirs = {};
     eachString(data, function (s, st, k) {
       if (DEBUG) {
         var dm = s.match(/\/(vol\d+\/[\w.-]+)\/[^\/?#]*\.(png|jpe?g|webp|gif|svg|json)(\?|#|$)/i);
@@ -1122,9 +1196,10 @@
       }
       if (!WB_CRM_IMG.test(s)) return;
       var ci = listItemAt(st, st.length - 1);
-      if (ci < 0) { if (crmLog.length < 6) crmLog.push('not-in-list ' + pathString(st) + '.' + k); return; }
-      if (crmSeen.indexOf(st[ci].node) !== -1) return;
-      crmSeen.push(st[ci].node);
+      if (ci < 0) { if (DEBUG && crmLog.length < 6) crmLog.push('not-in-list ' + pathString(st) + '.' + k); return; }
+      var cnode = st[ci].node;
+      if (crmSeen ? crmSeen.has(cnode) : crmSeenArr.indexOf(cnode) !== -1) return;
+      if (crmSeen) crmSeen.add(cnode); else crmSeenArr.push(cnode);
       crmCards.push(st.slice(0, ci + 1));
     });
     // карточки по спискам
@@ -1136,27 +1211,29 @@
     });
     var crmGone = 0;
     crmLists.forEach(function (g) {
-      var arr = g.arr, where = pathString(g.up) || '(root)', objs = 0, i;
+      var arr = g.arr, where = DEBUG ? (pathString(g.up) || '(root)') : '', objs = 0, i;
       for (i = 0; i < arr.length; i++) if (arr[i] && typeof arr[i] === 'object' && !Array.isArray(arr[i])) objs++;
       if (g.cards.length < objs) {
-        var other = [];
-        for (i = 0; i < arr.length && other.length < 4; i++) if (g.cards.indexOf(arr[i]) === -1) other.push('«' + (firstText(arr[i]) || '?') + '»');
-        crmLog.push(where + ': mixed ' + g.cards.length + '/' + objs + ' -> keep (other: ' + other.join(',') + ')');
+        if (DEBUG) {
+          var other = [];
+          for (i = 0; i < arr.length && other.length < 4; i++) if (g.cards.indexOf(arr[i]) === -1) other.push('«' + (firstText(arr[i]) || '?') + '»');
+          crmLog.push(where + ': mixed ' + g.cards.length + '/' + objs + ' -> keep (other: ' + other.join(',') + ')');
+        }
         return;
       }
       for (i = 0; i < g.cards.length; i++) {
         var csz = size(g.cards[i]);
-        if (csz > 8000) { crmLog.push(where + ': card ' + csz + 'b too big -> keep'); return; }
-        if (hasMoney(g.cards[i])) { crmLog.push(where + ': «' + (firstText(g.cards[i]) || '?') + '» has amounts -> keep'); return; }
+        if (csz > 8000) { if (DEBUG) crmLog.push(where + ': card ' + csz + 'b too big -> keep'); return; }
+        if (hasMoney(g.cards[i])) { if (DEBUG) crmLog.push(where + ': «' + (firstText(g.cards[i]) || '?') + '» has amounts -> keep'); return; }
       }
-      var names = [];
+      var names = DEBUG ? [] : null;
       for (i = 0; i < g.cards.length; i++) {
         var at = arr.indexOf(g.cards[i]);
         if (at < 0) continue;
-        names.push(firstText(g.cards[i]) || '?');
+        if (names) names.push(firstText(g.cards[i]) || '?');
         stats.blockBytes += size(g.cards[i]); arr.splice(at, 1); stats.removed++; crmGone++;
       }
-      var msg = where + ': -' + names.length + ' «' + names.join('», «') + '»';
+      var msg = DEBUG ? where + ': -' + names.length + ' «' + names.join('», «') + '»' : '';
       // список опустел -> элемент, в котором он лежит напрямую (и сам — элемент списка), если это пустая рамка
       var up = g.up, lvl = 0;
       while (arr.length === 0 && lvl++ < 3 && up.length >= 2) {
@@ -1165,14 +1242,14 @@
         var w = wrapStep.node;
         fresh(w);
         var wsz = size(w);
-        if (wsz > 3000 || hasVisual(w)) { msg += ' | wrapper kept (' + wsz + 'b' + (hasVisual(w) ? ', has images' : '') + ')'; break; }
+        if (wsz > 3000 || hasVisual(w)) { if (DEBUG) msg += ' | wrapper kept (' + wsz + 'b' + (hasVisual(w) ? ', has images' : '') + ')'; break; }
         var wat = wrapStep.parent.indexOf(w);
         if (wat < 0) break;
         wrapStep.parent.splice(wat, 1); stats.blockBytes += wsz; stats.removed++;
-        msg += ' +wrapper ' + pathString(up.slice(0, up.length - 1)) + ' (' + wsz + 'b)';
+        if (DEBUG) msg += ' +wrapper ' + pathString(up, up.length - 1) + ' (' + wsz + 'b)';
         arr = wrapStep.parent; up = up.slice(0, up.length - 2);
       }
-      crmLog.push(msg);
+      if (DEBUG) crmLog.push(msg);
     });
     if (crmGone) { stats.reasons['wb-wallet-promo'] = crmGone; stats.blocks.push('wb-wallet:crm'); }
     if (DEBUG) {
@@ -1181,7 +1258,7 @@
     }
   }
 
-  if (!STRIP && !POCHTA_BANNERS && !IS_WB_FIN) scan(data, 0);
+  if (!POCHTA_BANNERS && !IS_WB_FIN) scan(data, 0);
 
   // ───────── Блоки-рекомендации по заголовку ─────────
   // AliExpress: профиль, корзина, страница и список заказов, избранное. Блок = виджет в списке children (не корень
@@ -1244,8 +1321,10 @@
             var par = -1;
             for (var q = b - 1; q >= 0; q--) if (TB.isBlock(stack[q])) { par = q; break; }
             if (par < 0 || stack[par].node.children !== stack[b].parent || stack[b].parent.length > 3) break;
-            var pj = ''; try { pj = JSON.stringify(stack[par].node); } catch (e) {}
-            if (TB.keep.test(pj) || size(stack[par].node) > TOTAL * 0.5) break;
+            var pnode = stack[par].node, pj = '';
+            try { pj = JSON.stringify(pnode); } catch (e) {}
+            if (sizeMemo) sizeMemo.set(pnode, pj.length);
+            if (pj.length > TOTAL * 0.5 || TB.keep.test(pj)) break;
             b = par;
           }
         }
@@ -1254,18 +1333,25 @@
       return -1;
     };
     var tbAdd = function (stack, b, title, why) {
-      var st = stack[b], sz = size(st.node);
-      if (sz > TOTAL * TB.maxFrac) { tbLog.push('«' + title + '» too-big ' + sz + 'b'); return false; }
-      if (!TB.allowWhole && TOTAL - sz < 200) { tbLog.push('«' + title + '» whole-response'); return false; }
-      if (TB.keep) { var js = ''; try { js = JSON.stringify(st.node); } catch (e) {} if (TB.keep.test(js)) { tbLog.push('«' + title + '» keep (profile menu inside)'); return false; } }
+      var st = stack[b], js = null, sz;
+      if (TB.keep) {
+        try { js = JSON.stringify(st.node); } catch (e) { js = ''; }
+        sz = js.length;
+        if (sizeMemo) sizeMemo.set(st.node, sz);
+      } else {
+        sz = size(st.node);
+      }
+      if (sz > TOTAL * TB.maxFrac) { if (DEBUG) tbLog.push('«' + title + '» too-big ' + sz + 'b'); return false; }
+      if (!TB.allowWhole && TOTAL - sz < 200) { if (DEBUG) tbLog.push('«' + title + '» whole-response'); return false; }
+      if (js !== null && TB.keep.test(js)) { if (DEBUG) tbLog.push('«' + title + '» keep (profile menu inside)'); return false; }
       if (targetNodes && targetNodes.has(st.node)) return true;
       if (targetNodes) targetNodes.add(st.node);
       var units = []; for (var u = b; u >= 0; u--) if (stack[u].inArr) units.push(stack[u]);
       targets.push({ kind: 'arr', parent: st.parent, key: st.key, node: st.node, units: units, idx: 0, block: true,
-                     pathStr: TB.tag + ' «' + title + '» ' + why });
+                     pathStr: DEBUG ? TB.tag + ' «' + title + '» ' + why : '' });
       stats.reasons[TB.tag.toLowerCase() + '-block'] = (stats.reasons[TB.tag.toLowerCase() + '-block'] || 0) + 1;
-      tbLog.push('«' + title + '» ' + why + ' ' + pathString(stack.slice(0, b + 1)) + ' (' + sz + 'b' +
-                 (st.node.name ? ' ' + st.node.name : st.node.type ? ' ' + st.node.type : '') + ')');
+      if (DEBUG) tbLog.push('«' + title + '» ' + why + ' ' + pathString(stack, b + 1) + ' (' + sz + 'b' +
+                            (st.node.name ? ' ' + st.node.name : st.node.type ? ' ' + st.node.type : '') + ')');
       return true;
     };
     // заголовок в маленьком элементе, а товары — в следующем элементе того же списка -> убрать оба
@@ -1284,7 +1370,7 @@
       // AliExpress: заголовок «Рекомендуем вам» у корзины лежит только в переводах -> пустая строка
       if (TB.tag === 'AE' && /i18n/.test(h.path) && typeof h.key === 'string' && /rec/i.test(h.key)) {
         h.holder[h.key] = ''; stats.removed++; stats.reasons['ae-title-off'] = (stats.reasons['ae-title-off'] || 0) + 1;
-        tbLog.push('«' + h.title + '» i18n ' + h.key + ' -> ""'); return;
+        if (DEBUG) tbLog.push('«' + h.title + '» i18n ' + h.key + ' -> ""'); return;
       }
       // Avito: заголовок — отдельный элемент списка избранного; всё, что идёт после него, — похожие объявления
       if (TB.tag === 'AV') {
@@ -1297,15 +1383,15 @@
             if (!el || typeof el !== 'object' || (targetNodes && targetNodes.has(el))) continue;
             if (targetNodes) targetNodes.add(el);
             var st2 = { parent: arr, key: x, node: el, inArr: true, unit: true, kind: 'arr' };
-            targets.push({ kind: 'arr', parent: arr, key: x, node: el, units: [st2].concat(outer), idx: 0, block: true, pathStr: 'AV «' + h.title + '» tail' });
+            targets.push({ kind: 'arr', parent: arr, key: x, node: el, units: [st2].concat(outer), idx: 0, block: true, pathStr: DEBUG ? 'AV «' + h.title + '» tail' : '' });
             cnt++;
           }
           stats.reasons['av-block'] = (stats.reasons['av-block'] || 0) + cnt;
-          tbLog.push('«' + h.title + '» title+tail ' + pathString(h.stack.slice(0, j + 1)) + ' -> ' + cnt + ' items (of ' + arr.length + ')');
+          if (DEBUG) tbLog.push('«' + h.title + '» title+tail ' + pathString(h.stack, j + 1) + ' -> ' + cnt + ' items (of ' + arr.length + ')');
           return;
         }
       }
-      tbLog.push('«' + h.title + '» no-block ' + h.path);
+      if (DEBUG) tbLog.push('«' + h.title + '» no-block ' + h.path);
     });
     // Avito: рекламные места в списке избранного (banner: {list: [{avito|buzzoola: {bannerCode…}}]}) -> убрать
     if (TB.tag === 'AV') (function avSlots(n, d) {
@@ -1521,17 +1607,19 @@
     byArray.forEach(function (set, arr) {
       var before = arr.length;
       var list = set.list.sort(function (a, b) { return b.key - a.key; });
+      var hasBlock = false;
       for (var i = 0; i < list.length; i++) {
         var tt = list[i];
+        if (tt.block) hasBlock = true;
         // индекс мог сдвинуться после удалений в этом же списке на прошлом проходе -> ищем элемент заново
         var at = arr[tt.key] === tt.node ? tt.key : arr.indexOf(tt.node);
         if (at < 0) continue;
         if (tt.block) stats.blockBytes += size(tt.node); else stats.bytes += size(tt.node);
         arr.splice(at, 1);
         stats.removed++;
-        if (stats.targets.length < 6) stats.targets.push(tt.pathStr);
+        if (DEBUG && stats.targets.length < 6) stats.targets.push(tt.pathStr);
       }
-      if (before > 0 && arr.length === 0 && !list[0].block) emptiedCandidates.push(list[0]);
+      if (before > 0 && arr.length === 0 && !hasBlock) emptiedCandidates.push(list[0]);
     });
     byArray.clear();
     for (var j = 0; j < jsonRemovals.length; j++) {
@@ -1544,10 +1632,10 @@
         stats.bytes += size(jt.node);
         delete jt.parent[jt.key];
         stats.removed += 1 + refs;
-        if (stats.targets.length < 6) stats.targets.push(jt.pathStr + ' (+' + refs + ' ref)');
+        if (DEBUG && stats.targets.length < 6) stats.targets.push(jt.pathStr + ' (+' + refs + ' ref)');
       } else if (jt.idx > 0 && jt.units[0].kind === 'arr') {
         queue({ kind: 'arr', parent: jt.units[0].parent, key: jt.units[0].key, node: jt.units[0].node,
-                units: jt.units, idx: 0, pathStr: jt.pathStr + ' (fallback)' });
+                units: jt.units, idx: 0, pathStr: DEBUG ? jt.pathStr + ' (fallback)' : '' });
       }
     }
     jsonRemovals = [];
@@ -1560,9 +1648,10 @@
     for (var ei = 0; ei < em.length; ei++) {
       var et = em[ei], next = et.units[et.idx + 1];
       if (!next) continue;
+      fresh(next.node);
       if (size(next.node) > TOTAL * CLIMB_CAP) continue;
       queue({ kind: next.kind, parent: next.parent, key: next.key, node: next.node, units: et.units,
-              idx: et.idx + 1, pathStr: et.pathStr + ' (empty parent)' });
+              idx: et.idx + 1, pathStr: DEBUG ? et.pathStr + ' (empty parent)' : '' });
     }
     applyRemovals();
   }
@@ -1571,21 +1660,26 @@
   // остаётся один, и приложение рисует его широкой карточкой. Поэтому товары перекладываются в ряды по два, неполный
   // последний ряд убирается. Только в ответах, где что-то удалено.
   if (stats.removed) aeRowLists.forEach(function (rl) {
-    var n = rl.list, per = rl.per, rows = [], pool = [], odd = 0, i;
+    var n = rl.list, per = rl.per, rowSet = typeof Set === 'function' ? new Set() : null, rows = rowSet ? null : [], rowCount = 0, pool = [], odd = 0, i;
     for (i = 0; i < n.length; i++) {
       var rw = n[i] && n[i].rowV2;
-      if (rw && typeof rw === 'object' && Array.isArray(rw.items)) { rows.push(n[i]); if (rw.items.length !== per) odd++; pool = pool.concat(rw.items); }
+      if (rw && typeof rw === 'object' && Array.isArray(rw.items)) {
+        rowCount++;
+        if (rowSet) rowSet.add(n[i]); else rows.push(n[i]);
+        if (rw.items.length !== per) odd++;
+        Array.prototype.push.apply(pool, rw.items);
+      }
     }
     if (!odd) return;
     var keep = pool.length - pool.length % per, q = 0;
     for (i = keep; i < pool.length; i++) { stats.blockBytes += size(pool[i]); stats.removed++; }
     for (i = 0; i < n.length; i++) {
-      if (rows.indexOf(n[i]) === -1) continue;
+      if (rowSet ? !rowSet.has(n[i]) : rows.indexOf(n[i]) === -1) continue;
       if (q < keep) { n[i].rowV2.items = pool.slice(q, q + per); fresh(n[i].rowV2); fresh(n[i]); q += per; }
       else { n.splice(i, 1); i--; }
     }
     stats.reasons['ae-rows'] = (stats.reasons['ae-rows'] || 0) + odd;
-    if (DEBUG) log('AE rows: ' + odd + ' of ' + rows.length + ' incomplete -> ' + (keep / per) + ' rows by ' + per +
+    if (DEBUG) log('AE rows: ' + odd + ' of ' + rowCount + ' incomplete -> ' + (keep / per) + ' rows by ' + per +
                    (pool.length > keep ? ', last ' + (pool.length - keep) + ' dropped' : ''));
   });
 
@@ -1658,7 +1752,7 @@
   }
   if (!stats.removed) {
     if (DEBUG) log('nothing removed' + (stats.blocks.length ? ' blocks=' + stats.blocks.join(',') : '') + (stats.skippedBig ? ' (skipped big: ' + stats.skippedBig + ')' : '') +
-                   (Object.keys(stats.reasons).length ? ' hits=' + JSON.stringify(stats.reasons) : '') + (PROBE ? '' : ' | ' + summary(data)));
+                   (Object.keys(stats.reasons).length ? ' hits=' + JSON.stringify(stats.reasons) : '') + (!DEBUG_PROBE || PROBE ? '' : ' | ' + summary(data)));
     return $done({});
   }
   if (stats.bytes > TOTAL * ABORT_CAP) {
